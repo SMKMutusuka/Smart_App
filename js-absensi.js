@@ -3,11 +3,9 @@ var BULAN_INDONESIA = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
-
 var HARI_INDONESIA = [
   "Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"
 ];
-
 // ⭐ Helper: Ambil jam saja dari string waktu
 function formatJamSaja(waktu) {
   if (!waktu) return '-';
@@ -16,7 +14,6 @@ function formatJamSaja(waktu) {
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) {
     return str.length === 5 ? str + ':00' : str;
   }
-
   try {
     var d = new Date(str);
     if (!isNaN(d.getTime())) {
@@ -26,7 +23,6 @@ function formatJamSaja(waktu) {
       return hh + ':' + mm + ':' + ss;
     }
   } catch (e) {}
-
   var match = str.match(/(\d{2}:\d{2}:\d{2})/);
   if (match) return match[1];
 
