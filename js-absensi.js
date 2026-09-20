@@ -184,7 +184,25 @@ function captureWebcamSnapshot() {
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0);
 
-  var base64 = canvas.toDataURL('image/jpeg', 0.7);
+  // ⭐ Kompres agresif biar < 30KB base64 (hindari redirect 302 Apps Script)
+var maxDim = 320;
+var w = canvas.width, h = canvas.height;
+if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+if (w !== canvas.width) {
+  var tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  tmp.getContext('2d').drawImage(canvas, 0, 0, w, h);
+  canvas = tmp;
+}
+var base64 = canvas.toDataURL('image/jpeg', 0.5);
+// Loop kompres kalau masih > 30000 char
+var q = 0.5;
+while (base64.length > 30000 && q > 0.15) {
+  q -= 0.05;
+  base64 = canvas.toDataURL('image/jpeg', q);
+}
+console.log('[Selfie Webcam] Size:', base64.length);
 
   var base64Input = document.getElementById('selfie_base64');
   if (base64Input) base64Input.value = base64;
@@ -247,13 +265,30 @@ function handleSelfieUpload(input) {
   var placeholder = document.getElementById('selfie-placeholder');
   var container = document.getElementById('selfie-container');
 
-  if (input.files && input.files[0]) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var base64 = e.target.result;
+  if (!input.files || !input.files[0]) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var cv = document.createElement('canvas');
+      var maxDim = 320;
+      var w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+      else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      var base64 = cv.toDataURL('image/jpeg', 0.5);
+      var q = 0.5;
+      while (base64.length > 30000 && q > 0.15) {
+        q -= 0.05;
+        base64 = cv.toDataURL('image/jpeg', q);
+      }
+      console.log('[Selfie HP] Size:', base64.length);
+
       var base64Input = document.getElementById('selfie_base64');
       if (base64Input) base64Input.value = base64;
-
       if (preview) { preview.src = base64; preview.style.display = 'block'; }
       if (placeholder) placeholder.style.display = 'none';
       if (container) container.classList.add('has-selfie');
@@ -261,8 +296,9 @@ function handleSelfieUpload(input) {
       var btnOpen = document.getElementById('btnOpenSelfie');
       if (btnOpen) btnOpen.innerHTML = '<i class="fas fa-redo"></i> Ambil Ulang';
     };
-    reader.readAsDataURL(input.files[0]);
-  }
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
 }
 
 /**
