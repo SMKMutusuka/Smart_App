@@ -50,11 +50,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
   function makeRunner() {
     var state = { onSuccess: null, onFailure: null };
 
-    var runner = {
-      withSuccessHandler: function(cb) { state.onSuccess = cb; return runner; },
-      withFailureHandler: function(cb) { state.onFailure = cb; return runner; }
-    };
-
     function callBackend(fnName, args) {
       console.log('[API] Call:', fnName, args);
       fetch(BACKEND_URL, {
@@ -83,19 +78,40 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       });
     }
 
-    return new Proxy(runner, {
-      get: function(target, prop) {
-        // ⭐ KUNCI FIX: kalau prop ada di target, return bound function
-        if (prop in target) {
-          return target[prop];
-        }
-        // Kalau bukan, return fungsi yang panggil backend
-        return function() {
-          callBackend(prop, Array.prototype.slice.call(arguments));
-          return runner;
-        };
-      }
+    var runner = {};
+
+    // ⭐ Definisikan method yang ADA di object
+    runner.withSuccessHandler = function(cb) { state.onSuccess = cb; return runner; };
+    runner.withFailureHandler = function(cb) { state.onFailure = cb; return runner; };
+
+    // ⭐ Tambahkan SEMUA fungsi backend sebagai method statis
+    var backendFunctions = [
+      'doLogin', 'doGtkLogin', 'doStudentLogin',
+      'getDashboardAdmin', 'getDashboardGTK',
+      'getKelas', 'getSiswa', 'saveKelas', 'saveSiswa', 'deleteKelas', 'deleteSiswa',
+      'getSiswaByKelas', 'cekAbsensi', 'submitAbsensi', 'submitAbsenWithGPS',
+      'getLaporanRekap', 'getStudentData',
+      'getWhatsappSiswa', 'updateWhatsappSiswa', 'getAllWhatsappSiswa',
+      'getWhatsappGTK', 'updateWhatsappGTK',
+      'gantiPasswordSiswa', 'gantiPasswordAdmin', 'gantiUsernameAdmin', 'gantiPasswordGTK',
+      'getLokasiSekolah', 'saveLokasiSekolah', 'geocodeAddress', 'reverseGeocode',
+      'getPendingApprovals', 'getApprovalStats', 'approveAbsensi', 'rejectAbsensi',
+      'submitAbsensiGTK',
+      'getDirectTugasSiswa', 'submitDirectTugasSiswa',
+      'getSemuaTugasAdmin', 'simpanNilaiDirectTugas', 'hapusDirectTugas',
+      'getKelasForFilter', 'getSiswaTidakHadir',
+      'aiGuruGenerate', 'generateLaporanGTKPDF'
+    ];
+
+    backendFunctions.forEach(function(fnName) {
+      runner[fnName] = function() {
+        var args = Array.prototype.slice.call(arguments);
+        callBackend(fnName, args);
+        return runner;
+      };
     });
+
+    return runner;
   }
 
   window.google = window.google || {};
