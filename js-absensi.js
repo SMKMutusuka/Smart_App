@@ -977,19 +977,18 @@ function submitStudentSelfAbsen(e) {
             .withSuccessHandler(function(msg) {
   hideLoading();
   if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya'; }
-  Swal.fire({ icon: 'success', title: 'Absensi Terkirim!', text: msg }).then(function() {
-    // ⭐ Sequential — hindari paralel request (biar tidak hang)
-    prepareStudentAbsenPage();
-    setTimeout(function() { loadStudentDashboard(); }, 1200);
-    setTimeout(function() { loadApprovalStatsOnly(); }, 2400);
-  });
-})
-              // ⭐ Fallback: paksa hide loading setelah 1.5 detik
-setTimeout(function() {
-  var loader = document.getElementById('global-loader');
-  if (loader) loader.classList.add('hidden');
-}, 1500);
-            })
+      Swal.fire({ icon: 'success', title: 'Absensi Terkirim!', text: msg }).then(function() {
+      // ⭐ Sequential — hindari paralel request (biar tidak hang)
+      prepareStudentAbsenPage();
+      setTimeout(function() { loadStudentDashboard(); }, 1200);
+      setTimeout(function() { loadApprovalStatsOnly(); }, 2400);
+      // ⭐ Fallback: paksa hide loading setelah 1.5 detik
+      setTimeout(function() {
+        var loader = document.getElementById('global-loader');
+        if (loader) loader.classList.add('hidden');
+      }, 1500);
+    });
+  })
             .withFailureHandler(function(err) {
               hideLoading();
               if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya'; }
