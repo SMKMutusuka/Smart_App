@@ -41,21 +41,14 @@
   <!-- ⭐ CSS LOKAL -->
   <link rel="stylesheet" href="styles.css">
 
-  <script>
-// ═══════════════════════════════════════════════════════════
-// ⭐ ADAPTER — Google Apps Script style → fetch
-// Pola: google.script.run.withSuccessHandler(cb).fungsiApaPun(arg1, arg2)
-// ═══════════════════════════════════════════════════════════
+<script>
 var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
 
 (function() {
-  if (typeof google !== 'undefined' && google.script && google.script.run && google.script.run._real) return;
+  if (window.google && window.google.script && window.google.script.run && window.google.script.run._real) return;
 
   function makeRunner() {
-    var state = {
-      onSuccess: null,
-      onFailure: null
-    };
+    var state = { onSuccess: null, onFailure: null };
 
     var runner = {
       withSuccessHandler: function(cb) { state.onSuccess = cb; return runner; },
@@ -73,17 +66,13 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
         return res.text();
       })
       .then(function(text) {
-        if (text.trim().charAt(0) === '<') {
-          throw new Error('Backend mengembalikan HTML, bukan JSON');
-        }
+        if (text.trim().charAt(0) === '<') throw new Error('Backend HTML, bukan JSON');
         var parsed;
-        try { parsed = JSON.parse(text); }
-        catch (e) { throw new Error('Response bukan JSON'); }
-
+        try { parsed = JSON.parse(text); } catch (e) { throw new Error('Response bukan JSON'); }
         if (parsed.success) {
           if (state.onSuccess) state.onSuccess(parsed.data);
         } else {
-          var err = new Error(parsed.error || 'Unknown error');
+          var err = new Error(parsed.error || 'Unknown');
           if (state.onFailure) state.onFailure(err);
           else console.error('[API Error]', parsed.error);
         }
@@ -94,13 +83,15 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       });
     }
 
-    // Proxy: akses .apapun → dianggap nama fungsi backend
     return new Proxy(runner, {
       get: function(target, prop) {
-        if (prop in target) return target[prop];
+        // ⭐ KUNCI FIX: kalau prop ada di target, return bound function
+        if (prop in target) {
+          return target[prop];
+        }
+        // Kalau bukan, return fungsi yang panggil backend
         return function() {
-          var args = Array.prototype.slice.call(arguments);
-          callBackend(prop, args);
+          callBackend(prop, Array.prototype.slice.call(arguments));
           return runner;
         };
       }
