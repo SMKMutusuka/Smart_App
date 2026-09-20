@@ -985,6 +985,11 @@ function submitStudentSelfAbsen(e) {
               prepareStudentAbsenPage();
               loadStudentDashboard();
               loadApprovalStatsOnly();
+              // ⭐ Fallback: paksa hide loading setelah 1.5 detik
+setTimeout(function() {
+  var loader = document.getElementById('global-loader');
+  if (loader) loader.classList.add('hidden');
+}, 1500);
             })
             .withFailureHandler(function(err) {
               hideLoading();
@@ -1276,6 +1281,11 @@ function handlePresensiGTK(e) {
 
       if (typeof loadGTKDashboard === 'function') {
         loadGTKDashboard();
+        // ⭐ Fallback: paksa hide loading setelah 1.5 detik
+setTimeout(function() {
+  var loader = document.getElementById('global-loader');
+  if (loader) loader.classList.add('hidden');
+}, 1500);
       }
     })
     .withFailureHandler(function(err) {
