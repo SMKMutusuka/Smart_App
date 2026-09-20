@@ -77,22 +77,19 @@
         return res.text();
       })
       .then(function(text) {
-        console.log('[API] Response text (100 char):', text.substring(0, 100));
-        if (text.trim().startsWith('<')) {
-          throw new Error('Backend mengembalikan HTML, bukan JSON. Pastikan Apps Script Web App di-deploy dengan akses "Anyone".');
-        }
-        var json;
-        try { json = JSON.parse(text); }
-        catch (e) { throw new Error('Response bukan JSON: ' + text.substring(0, 100)); }
+  console.log('[API] Response text (100 char):', text.substring(0, 100));
+  
+  // ⭐ PASTIKAN loading hilang tiap response masuk
+  if (typeof hideLoading === 'function') hideLoading();
+  
+  // ... kode existing ...
 
-        if (json.success) {
-          if (self._success) self._success(json.data);
-        } else {
-          var err = new Error(json.error || 'Unknown error');
-          if (self._failure) self._failure(err);
-          else console.error('[API Error]', json.error);
-        }
-      })
+  if (json.success) {
+    if (self._success) self._success(json.data);
+  } else {
+    // ...
+  }
+})
       .catch(function(err) {
         console.error('[API Fetch Error]', err);
         if (self._failure) self._failure(err);
