@@ -37,95 +37,83 @@
   <!-- ⭐ CSS LOKAL (menggantikan include('Styles')) -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- ═══════════════════════════════════════════════════════════ -->
-  <!-- ⭐ ADAPTER — Connect GitHub Pages ke Apps Script Backend -->
-  <!-- ═══════════════════════════════════════════════════════════ -->
   <script>
-  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
+// ═══════════════════════════════════════════════════════════
+// ⭐ ADAPTER — Google Apps Script style → fetch
+// Pola: google.script.run.withSuccessHandler(cb).fungsiApaPun(arg1, arg2)
+// ═══════════════════════════════════════════════════════════
+var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
 
-  (function() {
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-      console.log('[Adapter] google.script sudah ada — skip');
-      return;
-    }
-    console.log('[Adapter] Bikin google.script.run palsu');
+(function() {
+  if (typeof google !== 'undefined' && google.script && google.script.run && google.script.run._real) return;
 
-    function ApiRunner(fnName) {
-      this.fnName = fnName;
-      this._success = null;
-      this._failure = null;
-      this._executed = false;
-    }
-    ApiRunner.prototype.withSuccessHandler = function(cb) { this._success = cb; return this; };
-    ApiRunner.prototype.withFailureHandler = function(cb) { this._failure = cb; return this; };
+  function makeRunner() {
+    var state = {
+      onSuccess: null,
+      onFailure: null,
+      pendingFn: null,
+      pendingArgs: null
+    };
 
-    ApiRunner.prototype._call = function(args) {
-      if (this._executed) return this;
-      this._executed = true;
-      var self = this;
-      var payload = { fn: this.fnName, args: args };
-      console.log('[API] Call:', this.fnName, args);
+    var runner = {
+      withSuccessHandler: function(cb) { state.onSuccess = cb; return runner; },
+      withFailureHandler: function(cb) { state.onFailure = cb; return runner; }
+    };
 
+    function callBackend(fnName, args) {
+      console.log('[API] Call:', fnName, args);
       fetch(BACKEND_URL, {
         method: 'POST',
-        body: JSON.stringify(payload),
-        redirect: 'follow'
+        body: JSON.stringify({ fn: fnName, args: args })
       })
       .then(function(res) {
-        console.log('[API] Response status:', res.status);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.text();
       })
       .then(function(text) {
-  console.log('[API] Response text (100 char):', text.substring(0, 100));
-  
-  // ⭐ PASTIKAN loading hilang tiap response masuk
-  if (typeof hideLoading === 'function') hideLoading();
-  
-  // ... kode existing ...
+        if (text.trim().charAt(0) === '<') {
+          throw new Error('Backend mengembalikan HTML, bukan JSON');
+        }
+        var json;
+        try { json = JSON.parse(text); }
+        catch (e) { throw new Error('Response bukan JSON'); }
 
-  if (json.success) {
-    if (self._success) self._success(json.data);
-  } else {
-    // ...
-  }
-})
+        if (json.success) {
+          if (state.onSuccess) state.onSuccess(json.data);
+        } else {
+          var err = new Error(json.error || 'Unknown error');
+          if (state.onFailure) state.onFailure(err);
+          else console.error('[API Error]', json.error);
+        }
+      })
       .catch(function(err) {
         console.error('[API Fetch Error]', err);
-        if (self._failure) self._failure(err);
-        else if (typeof Swal !== 'undefined') {
-          Swal.fire({
-            icon: 'error',
-            title: 'Koneksi Backend Gagal',
-            text: err.message,
-            confirmButtonColor: '#10b981'
-          });
-        } else {
-          alert('Koneksi Backend Gagal: ' + err.message);
-        }
-      });
-
-      return this;
-    };
-
-    function wrapRunner(runner) {
-      return new Proxy(runner, {
-        get: function(target, prop) {
-          if (prop in target) return target[prop];
-          return function() {
-            target.fnName = prop;
-            return target._call(Array.prototype.slice.call(arguments));
-          };
-        }
+        if (state.onFailure) state.onFailure(err);
       });
     }
 
-    window.google = window.google || {};
-    window.google.script = window.google.script || {};
-    window.google.script.run = wrapRunner(new ApiRunner(''));
-    console.log('[Adapter] ✅ google.script.run siap');
-  })();
-  </script>
+    // Proxy: akses .apapun → dianggap nama fungsi backend
+    return new Proxy(runner, {
+      get: function(target, prop) {
+        if (prop in target) return target[prop];
+        // Return fungsi yang memanggil backend
+        return function() {
+          var args = Array.prototype.slice.call(arguments);
+          callBackend(prop, args);
+          return runner;
+        };
+      }
+    });
+  }
+
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+  window.google.script.run = makeRunner();
+  window.google.script.run._real = true;
+
+  console.log('[Adapter] ✅ google.script.run siap');
+})();
+</script>
 </head>
 <body>
 
