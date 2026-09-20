@@ -35,67 +35,113 @@
 var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
 
 (function() {
-  // Kalau google.script sudah ada (misal dibuka di Apps Script), skip
   if (typeof google !== 'undefined' && google.script && google.script.run) {
-    console.log('[Adapter] google.script sudah ada — skip adapter');
+    console.log('[Adapter] google.script sudah ada — skip');
     return;
   }
 
-  console.log('[Adapter] Bikin google.script.run palsu → fetch ke Apps Script');
+  console.log('[Adapter] Bikin google.script.run palsu');
 
-  // Simulasi google.script.run
+  // ⭐ Runner class
+  function ApiRunner(fnName) {
+    this.fnName = fnName;
+    this._success = null;
+    this._failure = null;
+    this._args = [];
+    this._executed = false;
+  }
+
+  ApiRunner.prototype.withSuccessHandler = function(cb) {
+    this._success = cb;
+    return this;
+  };
+
+  ApiRunner.prototype.withFailureHandler = function(cb) {
+    this._failure = cb;
+    return this;
+  };
+
+  // ⭐ Setiap fungsi backend = method di runner
+  // Dipanggil sebagai .doLogin(args) → kita eksekusi fetch
+  ApiRunner.prototype._call = function(args) {
+    if (this._executed) return this;
+    this._executed = true;
+
+    var self = this;
+    var payload = { fn: this.fnName, args: args };
+
+    console.log('[API] Call:', this.fnName, args);
+
+    fetch(BACKEND_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(res) {
+      console.log('[API] Response status:', res.status);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function(text) {
+      console.log('[API] Response text:', text.substring(0, 200));
+      var json;
+      try { json = JSON.parse(text); }
+      catch (e) { throw new Error('Response bukan JSON: ' + text.substring(0, 100)); }
+
+      if (json.success) {
+        if (self._success) self._success(json.data);
+      } else {
+        var err = new Error(json.error || 'Unknown error');
+        if (self._failure) self._failure(err);
+        else console.error('[API Error]', json.error);
+      }
+    })
+    .catch(function(err) {
+      console.error('[API Fetch Error]', err);
+      if (self._failure) self._failure(err);
+    });
+
+    return this;
+  };
+
+  // ⭐ google.script.run — root object
+  var runRoot = {
+    withSuccessHandler: function(cb) {
+      var r = new ApiRunner('');
+      r._success = cb;
+      // Override: chaining .doXxx(args) setelah withSuccessHandler
+      return wrapRunner(r);
+    },
+    withFailureHandler: function(cb) {
+      var r = new ApiRunner('');
+      r._failure = cb;
+      return wrapRunner(r);
+    }
+  };
+
+  // ⭐ Wrap runner — biar .doXxx() otomatis trigger
+  function wrapRunner(runner) {
+    return new Proxy(runner, {
+      get: function(target, prop) {
+        // Kalau prop adalah method runner (withSuccessHandler, dll) → return asli
+        if (prop in target) return target[prop];
+
+        // Selain itu → anggap nama fungsi backend
+        return function() {
+          var args = Array.prototype.slice.call(arguments);
+          target.fnName = prop;
+          return target._call(args);
+        };
+      }
+    });
+  }
+
   window.google = window.google || {};
   window.google.script = window.google.script || {};
+  window.google.script.run = wrapRunner(new ApiRunner(''));
 
-  window.google.script.run = new Proxy({}, {
-    get: function(target, methodName) {
-      // Setiap kali panggil google.script.run.namaFungsi()
-      return function() {
-        var args = Array.prototype.slice.call(arguments);
-        var successCb = null;
-        var failureCb = null;
-
-        // Chain handler
-        var runner = {
-          withSuccessHandler: function(cb) { successCb = cb; return runner; },
-          withFailureHandler: function(cb) { failureCb = cb; return runner; },
-        };
-
-        // Trigger async setelah handler di-set (microtask)
-        Promise.resolve().then(function() {
-          var payload = { fn: methodName, args: args };
-
-          fetch(BACKEND_URL, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-          })
-          .then(function(res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-          })
-          .then(function(json) {
-            if (json.success) {
-              if (successCb) successCb(json.data);
-            } else {
-              var err = new Error(json.error || 'Unknown error');
-              if (failureCb) failureCb(err);
-              else console.error('[API]', json.error);
-            }
-          })
-          .catch(function(err) {
-            console.error('[API Error]', err);
-            if (failureCb) failureCb(err);
-          });
-        });
-
-        return runner;
-      };
-    }
-  });
-
-  console.log('[Adapter] ✅ google.script.run siap dipakai');
+  console.log('[Adapter] ✅ google.script.run siap');
 })();
 </script>
 </head>
