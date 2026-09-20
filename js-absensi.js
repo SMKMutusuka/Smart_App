@@ -930,7 +930,7 @@ function submitStudentSelfAbsen(e) {
         title: 'GPS Tidak Terdeteksi',
         html: 'Tidak masalah! Anda tetap bisa absen.<br><br>' +
               '<strong>Mohon isi kolom Keterangan</strong> dengan alasan ' +
-              '(contoh: "GPS HP error, saya di kelas XI MIPA 1").<br><br>' +
+              '(contoh: "GPS HP error, saya di kelas XI TSM").<br><br>' +
               'Guru akan verifikasi kehadiran Anda via selfie.'
       });
       document.getElementById('student_keterangan').focus();
