@@ -33,15 +33,12 @@
 // ⭐ ADAPTER — Connect GitHub Pages ke Apps Script Backend
 // ═══════════════════════════════════════════════════════════
 var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
-
 (function() {
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     console.log('[Adapter] google.script sudah ada — skip');
     return;
   }
-
   console.log('[Adapter] Bikin google.script.run palsu');
-
   // ⭐ Runner class
   function ApiRunner(fnName) {
     this.fnName = fnName;
@@ -50,33 +47,56 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
     this._args = [];
     this._executed = false;
   }
-
   ApiRunner.prototype.withSuccessHandler = function(cb) {
     this._success = cb;
     return this;
   };
-
   ApiRunner.prototype.withFailureHandler = function(cb) {
     this._failure = cb;
     return this;
   };
-
   // ⭐ Setiap fungsi backend = method di runner
   // Dipanggil sebagai .doLogin(args) → kita eksekusi fetch
   ApiRunner.prototype._call = function(args) {
     if (this._executed) return this;
     this._executed = true;
-
     var self = this;
     var payload = { fn: this.fnName, args: args };
-
     console.log('[API] Call:', this.fnName, args);
-
+    var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q35XVVw9Y7Dh-KX2Srlv9zb543npTLQ0h2izWism5oJrhLj/exec';
+(function() {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    console.log('[Adapter] google.script sudah ada — skip');
+    return;
+  }
+  console.log('[Adapter] Bikin google.script.run palsu');
+  // ⭐ Runner class
+  function ApiRunner(fnName) {
+    this.fnName = fnName;
+    this._success = null;
+    this._failure = null;
+    this._executed = false;
+  }
+  ApiRunner.prototype.withSuccessHandler = function(cb) {
+    this._success = cb;
+    return this;
+  };
+  ApiRunner.prototype.withFailureHandler = function(cb) {
+    this._failure = cb;
+    return this;
+  };
+  ApiRunner.prototype._call = function(args) {
+    if (this._executed) return this;
+    this._executed = true;
+    var self = this;
+    var payload = { fn: this.fnName, args: args };
+    console.log('[API] Call:', this.fnName, args);
     fetch(BACKEND_URL, {
       method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      // ⭐ PENTING: JANGAN set Content-Type manual — biar browser pakai text/plain otomatis
+      // Ini menghindari CORS preflight (OPTIONS request) yang tidak di-handle Apps Script
+      body: JSON.stringify(payload),
+      redirect: 'follow'
     })
     .then(function(res) {
       console.log('[API] Response status:', res.status);
@@ -84,11 +104,18 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       return res.text();
     })
     .then(function(text) {
-      console.log('[API] Response text:', text.substring(0, 200));
+      console.log('[API] Response text (100 char):', text.substring(0, 100));
+
+      // ⭐ Handle HTML response (redirect ke login Google = deployment salah)
+      if (text.trim().startsWith('<')) {
+        throw new Error(
+          'Backend mengembalikan HTML, bukan JSON. ' +
+          'Pastikan Apps Script Web App di-deploy dengan akses "Anyone" (bukan "Anyone with Google Account").'
+        );
+      }
       var json;
       try { json = JSON.parse(text); }
       catch (e) { throw new Error('Response bukan JSON: ' + text.substring(0, 100)); }
-
       if (json.success) {
         if (self._success) self._success(json.data);
       } else {
@@ -100,17 +127,27 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
     .catch(function(err) {
       console.error('[API Fetch Error]', err);
       if (self._failure) self._failure(err);
+      else {
+        // ⭐ Fallback: tampilkan error ke user biar tidak "diam saja"
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            icon: 'error',
+            title: 'Koneksi Backend Gagal',
+            text: err.message,
+            confirmButtonColor: '#10b981'
+          });
+        } else {
+          alert('Koneksi Backend Gagal: ' + err.message);
+        }
+      }
     });
-
     return this;
   };
-
-  // ⭐ google.script.run — root object
+  // ⭐ Root object
   var runRoot = {
     withSuccessHandler: function(cb) {
       var r = new ApiRunner('');
       r._success = cb;
-      // Override: chaining .doXxx(args) setelah withSuccessHandler
       return wrapRunner(r);
     },
     withFailureHandler: function(cb) {
@@ -119,15 +156,10 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       return wrapRunner(r);
     }
   };
-
-  // ⭐ Wrap runner — biar .doXxx() otomatis trigger
   function wrapRunner(runner) {
     return new Proxy(runner, {
       get: function(target, prop) {
-        // Kalau prop adalah method runner (withSuccessHandler, dll) → return asli
         if (prop in target) return target[prop];
-
-        // Selain itu → anggap nama fungsi backend
         return function() {
           var args = Array.prototype.slice.call(arguments);
           target.fnName = prop;
@@ -136,11 +168,9 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       }
     });
   }
-
   window.google = window.google || {};
   window.google.script = window.google.script || {};
   window.google.script.run = wrapRunner(new ApiRunner(''));
-
   console.log('[Adapter] ✅ google.script.run siap');
 })();
 </script>
