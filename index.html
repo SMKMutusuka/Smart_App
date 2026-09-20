@@ -34,7 +34,11 @@
   <!-- html-docx-js untuk download Word (.docx) -->
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
 
-  <!-- ⭐ CSS LOKAL (menggantikan include('Styles')) -->
+  <!-- ⭐ LEAFLET untuk peta lokasi sekolah -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- ⭐ CSS LOKAL -->
   <link rel="stylesheet" href="styles.css">
 
   <script>
@@ -50,9 +54,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
   function makeRunner() {
     var state = {
       onSuccess: null,
-      onFailure: null,
-      pendingFn: null,
-      pendingArgs: null
+      onFailure: null
     };
 
     var runner = {
@@ -74,16 +76,16 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
         if (text.trim().charAt(0) === '<') {
           throw new Error('Backend mengembalikan HTML, bukan JSON');
         }
-        var json;
-        try { json = JSON.parse(text); }
+        var parsed;
+        try { parsed = JSON.parse(text); }
         catch (e) { throw new Error('Response bukan JSON'); }
 
-        if (json.success) {
-          if (state.onSuccess) state.onSuccess(json.data);
+        if (parsed.success) {
+          if (state.onSuccess) state.onSuccess(parsed.data);
         } else {
-          var err = new Error(json.error || 'Unknown error');
+          var err = new Error(parsed.error || 'Unknown error');
           if (state.onFailure) state.onFailure(err);
-          else console.error('[API Error]', json.error);
+          else console.error('[API Error]', parsed.error);
         }
       })
       .catch(function(err) {
@@ -96,7 +98,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
     return new Proxy(runner, {
       get: function(target, prop) {
         if (prop in target) return target[prop];
-        // Return fungsi yang memanggil backend
         return function() {
           var args = Array.prototype.slice.call(arguments);
           callBackend(prop, args);
@@ -1460,7 +1461,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
 </div>
 
 <!-- ============================================= -->
-<!-- ⭐ JAVASCRIPT LOKAL (menggantikan include(...)) -->
+<!-- ⭐ JAVASCRIPT LOKAL -->
 <!-- ============================================= -->
 <script src="javascript.js"></script>
 <script src="js-absensi.js"></script>
