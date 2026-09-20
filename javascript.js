@@ -2007,6 +2007,7 @@ function logout() {
 }
 
 function eksekusiLogout() {
+  if (typeof closeWebcam === 'function') closeWebcam();
   currentUser = null;
 
   var sidebar = document.getElementById('sidebar');
