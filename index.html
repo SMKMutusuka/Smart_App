@@ -179,7 +179,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
 
 <!-- LOGIN PAGE -->
 <div id="login-page">
-  <div class="login-box">
+    <div class="login-box">
     <img src="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs" alt="Logo SMK Muhammadiyah 1 Surakarta" style="width: 130px; height: auto; margin-bottom: 14px; display: inline-block;">
     <h2>SMART MUTUSUKA</h2>
     <p>Presensi Digital, Monitoring Cerdas, Informasi Cepat.</p>
@@ -238,25 +238,11 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       </button>
     </form>
 
-    <form id="loginFormPembimbing" onsubmit="handleLoginPembimbing(event)" autocomplete="off" class="hidden">
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;text-align:center;">
-        <i class="fas fa-info-circle"></i> Untuk pembimbing industri / DUDI
-      </div>
-      <div class="form-group" style="text-align: left;">
-        <label for="pemb_kode"><i class="fas fa-key"></i> Kode Akses DUDI</label>
-        <input type="text" id="pemb_kode" class="form-control" required placeholder="Contoh: ABC123" style="text-transform: uppercase; letter-spacing: 2px; font-weight: 700;" maxlength="10">
-      </div>
-      <div class="form-group" style="text-align: left;">
-        <label for="pemb_pin"><i class="fas fa-lock"></i> PIN</label>
-        <input type="password" inputmode="numeric" pattern="[0-9]*" id="pemb_pin" class="form-control" required placeholder="6 digit angka" maxlength="6">
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;font-size:14px;">
-        <i class="fas fa-sign-in-alt"></i> Masuk Dashboard
-      </button>
-      <div style="margin-top:12px;font-size:11px;color:var(--text-muted);text-align:center;">
-        Lupa PIN? Hubungi admin sekolah.
-      </div>
-    </form>
+    <div style="text-align:center; margin-top:18px; padding-top:14px; border-top:1px dashed var(--border); font-size:12px;">
+      <a href="javascript:void(0)" onclick="showLoginDUDI()" style="color: var(--primary); font-weight: 700; text-decoration: none;">
+        <i class="fas fa-industry"></i> Login Pembimbing DUDI →
+      </a>
+    </div>
   </div>
   <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
 </div>
@@ -296,7 +282,38 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
   </div>
   <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
 </div>
-  
+<!-- ⭐ LOGIN DUDI (halaman terpisah) -->
+<div id="login-dudi-page" class="hidden">
+  <div class="login-box">
+    <img src="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs" alt="Logo SMK" style="width: 100px; height: auto; margin-bottom: 14px; display: inline-block;">
+    <h2 style="font-size:20px;">Login Pembimbing DUDI</h2>
+    <p style="font-size:12px; color:#64748b;">Monitoring absensi & jurnal siswa PKL</p>
+
+    <form id="loginFormPembimbing" onsubmit="handleLoginPembimbing(event)" autocomplete="off">
+      <div class="form-group" style="text-align: left;">
+        <label for="pemb_kode"><i class="fas fa-key"></i> Kode Akses DUDI</label>
+        <input type="text" id="pemb_kode" class="form-control" required placeholder="Contoh: ABC123" style="text-transform: uppercase; letter-spacing: 2px; font-weight: 700;" maxlength="10">
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label for="pemb_pin"><i class="fas fa-lock"></i> PIN</label>
+        <input type="password" inputmode="numeric" pattern="[0-9]*" id="pemb_pin" class="form-control" required placeholder="6 digit angka" maxlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;font-size:14px;">
+        <i class="fas fa-sign-in-alt"></i> Masuk Dashboard
+      </button>
+    </form>
+
+    <div style="margin-top:16px;font-size:12px;color:#64748b;text-align:center;">
+      <a href="javascript:void(0)" onclick="showLoginUtama()" style="color: var(--primary); font-weight: 700; text-decoration: none;">
+        ← Kembali ke Login Sekolah
+      </a>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center;">
+      Lupa PIN? Hubungi admin sekolah.
+    </div>
+  </div>
+  <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
+</div>  
 <!-- APP LAYOUT -->
 <div id="app-layout" class="hidden">
   <div class="topbar">
