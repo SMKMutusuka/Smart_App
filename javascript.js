@@ -131,6 +131,28 @@ function openWhatsApp(phoneNumber) {
 }
 
 // =============================================
+// LOGIN DUDI — Navigasi halaman
+// =============================================
+function showLoginDUDI() {
+  var page = document.getElementById('login-dudi-page');
+  var main = document.getElementById('login-page');
+  if (main) main.classList.add('hidden');
+  if (page) page.classList.remove('hidden');
+  setTimeout(function() {
+    var inp = document.getElementById('pemb_kode');
+    if (inp && !inp.value) inp.focus();
+  }, 200);
+}
+
+function showLoginUtama() {
+  var page = document.getElementById('login-dudi-page');
+  var main = document.getElementById('login-page');
+  if (page) page.classList.add('hidden');
+  if (main) main.classList.remove('hidden');
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+}
+
+// =============================================
 // RIPPLE EFFECT
 // =============================================
 function addRippleEffect() {
@@ -227,7 +249,7 @@ function getAccuratePosition() {
 }
 
 // =============================================
-// WA — Notifikasi Ketiadaan
+// WA — Notifikasi
 // =============================================
 function buildWaMessage(namaSiswa, namaKelas, tanggal, status, keterangan, namaSekolah) {
   var sekolah = namaSekolah || 'SMK Muhammadiyah 1 Surakarta';
@@ -267,11 +289,7 @@ function kirimWaWaliSiswa(nis, nama, kelas, tanggal, status, keterangan) {
       hideLoading();
       var waWali = data && data.WA_Wali ? data.WA_Wali : '';
       if (!waWali) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'WA Wali Tidak Ada',
-          html: 'Nomor WhatsApp wali <strong>' + escapeHtml(nama) + '</strong> belum diisi.'
-        });
+        Swal.fire({ icon: 'warning', title: 'WA Wali Tidak Ada', html: 'Nomor WhatsApp wali <strong>' + escapeHtml(nama) + '</strong> belum diisi.' });
         return;
       }
       var msg = buildWaMessage(nama, kelas, tanggal, status, keterangan);
@@ -475,7 +493,7 @@ function switchLoginTab(role) {
     gtk:   { tab: 'tab-btn-gtk',   form: 'loginFormGtk' },
     siswa: { tab: 'tab-btn-siswa', form: 'loginFormSiswa' }
   };
-    Object.keys(map).forEach(function(r) {
+  Object.keys(map).forEach(function(r) {
     var t = document.getElementById(map[r].tab);
     var f = document.getElementById(map[r].form);
     if (t) t.classList.remove('active');
@@ -536,12 +554,8 @@ function handleLoginGTK(e) {
         document.getElementById('gtk-welcome-info').textContent = 'NBM: ' + res.gtk.NBM + ' | Tugas: ' + res.gtk.Tugas;
 
         handleGTKStatusChange('Hadir');
-        if (typeof loadLogoAsync === 'function') {
-          loadLogoAsync();
-        }
-        setTimeout(function() {
-          loadGTKDashboard();
-        }, 300);
+        if (typeof loadLogoAsync === 'function') loadLogoAsync();
+        setTimeout(function() { loadGTKDashboard(); }, 300);
       }
     })
     .withFailureHandler(function(err) {
@@ -582,7 +596,7 @@ function handleLoginSiswa(e) {
 }
 
 // =============================================
-// SETUP ROLE UI — Menu handling
+// SETUP ROLE UI
 // =============================================
 function setupRoleUI(role) {
   var mAdmin = document.getElementById('menu-admin');
@@ -616,12 +630,11 @@ function setupRoleUI(role) {
     roleTitle.innerHTML = '<i class="fas fa-user-graduate"></i> Panel Siswa';
     showPage('page-dashboard-siswa', document.querySelector('[data-page="dashboard-siswa"]'));
   }
-
   addRippleEffect();
 }
 
 // =============================================
-// NAVIGATION — Show Page
+// NAVIGATION
 // =============================================
 function showPage(pageId, clickedLink) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.add('hidden'); });
@@ -638,12 +651,8 @@ function showPage(pageId, clickedLink) {
   var sidebar = DOM.sidebar || document.getElementById('sidebar');
   if (sidebar && sidebar.classList.contains('active')) toggleSidebar();
 
-  // Routing per halaman
   if (pageId === 'page-dashboard-admin') loadDashboardCharts();
-  if (pageId === 'page-approval-admin') {
-    loadApprovalKelasDropdown();
-    loadApprovalDashboard();
-  }
+  if (pageId === 'page-approval-admin') { loadApprovalKelasDropdown(); loadApprovalDashboard(); }
   if (pageId === 'page-lokasi-kelas') loadLokasiSekolah();
   if (pageId === 'page-dudi') loadDUDI();
   if (pageId === 'page-pkl-assign') loadAssignPKL();
@@ -665,11 +674,7 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-whatsapp-gtk') loadWhatsappGTK();
   if (pageId === 'page-pengaturan-gtk') showPengaturanGTK();
   if (pageId === 'page-ai-guru' && typeof initAIGuruPage === 'function') initAIGuruPage();
-
-  // ⭐ Approval Jurnal PKL (guru pembimbing sekolah)
-  if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') {
-    loadApprovalJurnalGuru();
-  }
+  if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') loadApprovalJurnalGuru();
 }
 
 function initAdmin() {
@@ -735,9 +740,7 @@ function loadDashboardCharts(startDate, endDate) {
       if (data.periode && data.periode.start && data.periode.end) {
         var startDisplay = formatDateDisplay(data.periode.start);
         var endDisplay = formatDateDisplay(data.periode.end);
-        var textDisplay = (startDisplay === endDisplay)
-          ? 'Data untuk ' + startDisplay
-          : 'Data ' + startDisplay + ' - ' + endDisplay;
+        var textDisplay = (startDisplay === endDisplay) ? 'Data untuk ' + startDisplay : 'Data ' + startDisplay + ' - ' + endDisplay;
         if (elTrenSub) elTrenSub.textContent = textDisplay;
         if (elDisSub) elDisSub.textContent = textDisplay;
       } else {
@@ -762,7 +765,6 @@ function loadDashboardCharts(startDate, endDate) {
 
 function renderDashStats(data) {
   data = data || {};
-
   var siswaRekap = data.siswaRekap || data.totalRekap || { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
   animateCounter('dash-hadir', siswaRekap.Hadir || 0);
   animateCounter('dash-sakit', siswaRekap.Sakit || 0);
@@ -824,12 +826,7 @@ function renderChartTren(trenData) {
         { label: 'Alpa', data: safeTren.map(function(d) { return d.Alpa || 0; }), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 2.5, fill: true, tension: 0.35 }
       ]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      aspectRatio: 2.4,
-      plugins: { legend: { display: true, position: 'top' } }
-    }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 2.4, plugins: { legend: { display: true, position: 'top' } } }
   });
 }
 
@@ -1024,10 +1021,8 @@ function loadApprovalKelasDropdown() {
     .withSuccessHandler(function(data) {
       var sel = document.getElementById('approval_filter_kelas');
       if (!sel) return;
-
       var currentVal = sel.value;
       sel.innerHTML = '<option value="">-- Semua Kelas --</option>';
-
       var safeData = Array.isArray(data) ? data : [];
       safeData.forEach(function(k) {
         var opt = document.createElement('option');
@@ -1035,7 +1030,6 @@ function loadApprovalKelasDropdown() {
         opt.textContent = k.Nama_Kelas;
         sel.appendChild(opt);
       });
-
       if (currentVal) sel.value = currentVal;
     })
     .withFailureHandler(function(err) { console.error('Gagal load dropdown kelas:', err); })
@@ -1044,10 +1038,7 @@ function loadApprovalKelasDropdown() {
 
 function loadApprovalDashboard() {
   showLoading();
-
-  var filterKelas = document.getElementById('approval_filter_kelas')
-    ? document.getElementById('approval_filter_kelas').value
-    : '';
+  var filterKelas = document.getElementById('approval_filter_kelas') ? document.getElementById('approval_filter_kelas').value : '';
 
   google.script.run
     .withSuccessHandler(function(stats) {
@@ -1058,12 +1049,8 @@ function loadApprovalDashboard() {
 
       var badge = document.getElementById('approval-badge');
       if (badge) {
-        if (stats.pending > 0) {
-          badge.textContent = stats.pending;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
+        if (stats.pending > 0) { badge.textContent = stats.pending; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
       }
     })
     .withFailureHandler(function(err) { console.error(err); })
@@ -1125,9 +1112,7 @@ function renderApprovalList(pendingList) {
           '</div>' +
           '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
             '<span class="badge-status-table ' + (statusMap[item.Status] || 'badge-hadir') + '" style="font-size:11px;padding:3px 12px;">' + item.Status + '</span>' +
-            ' ' + statusBadge +
-            ' ' + gpsBadge +
-            ' ' + selfieBadge +
+            ' ' + statusBadge + ' ' + gpsBadge + ' ' + selfieBadge +
           '</div>' +
           '<div style="font-size:12px;color:#475569;margin-top:6px;">Keterangan: ' + (escapeHtml(item.Keterangan) || '-') + '</div>' +
         '</div>' +
@@ -1159,10 +1144,8 @@ function approveAbsensi(idAbsen, namaSiswa) {
   Swal.fire({
     title: 'Setujui Absensi?',
     text: 'Anda akan menyetujui absensi ' + namaSiswa + '.',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Ya, Setujui',
-    cancelButtonText: 'Batal',
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Ya, Setujui', cancelButtonText: 'Batal',
     confirmButtonColor: '#10b981'
   }).then(function(result) {
     if (result.isConfirmed) {
@@ -1186,14 +1169,10 @@ function approveAbsensi(idAbsen, namaSiswa) {
 function rejectAbsensi(idAbsen, namaSiswa) {
   Swal.fire({
     title: 'Tolak Absensi?',
-    html: 'Anda akan menolak absensi <strong>' + escapeHtml(namaSiswa) + '</strong>.<br>' +
-          '⚠️ Otomatis dicatat sebagai <strong>ALPA</strong>.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Ya, Tolak → Alpa',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#ef4444',
-    cancelButtonColor: '#64748b'
+    html: 'Anda akan menolak absensi <strong>' + escapeHtml(namaSiswa) + '</strong>.<br>⚠️ Otomatis dicatat sebagai <strong>ALPA</strong>.',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Ya, Tolak → Alpa', cancelButtonText: 'Batal',
+    confirmButtonColor: '#ef4444', cancelButtonColor: '#64748b'
   }).then(function(result) {
     if (result.isConfirmed) {
       showLoading();
@@ -1219,12 +1198,8 @@ function loadApprovalStatsOnly() {
       stats = stats || { pending: 0, approved: 0, rejected: 0 };
       var badge = document.getElementById('approval-badge');
       if (badge) {
-        if (stats.pending > 0) {
-          badge.textContent = stats.pending;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
+        if (stats.pending > 0) { badge.textContent = stats.pending; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
       }
     })
     .withFailureHandler(function(err) { console.error(err); })
@@ -1252,8 +1227,7 @@ function loadKelas() {
                      '<button class="btn btn-danger btn-icon" onclick="hapusKelas(\'' + d.ID_Kelas + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
             }}
           ],
-          responsive: true,
-          pageLength: 25
+          responsive: true, pageLength: 25
         });
       }
     })
@@ -1335,8 +1309,7 @@ function loadSiswa() {
                      '<button class="btn btn-danger btn-icon" onclick="hapusSiswa(\'' + d.NIS + '\')" title="Hapus"><i class="fas fa-trash"></i></button>';
             }}
           ],
-          responsive: true,
-          pageLength: 25
+          responsive: true, pageLength: 25
         });
       }
       refreshAllKelasDropdowns();
@@ -1450,10 +1423,8 @@ function populateSelect(elId, data, placeholder) {
 // =============================================
 function loadWhatsappAdmin() {
   showLoading();
-  var idKelas = document.getElementById('admin_wa_filter_kelas')
-    ? document.getElementById('admin_wa_filter_kelas').value : '';
-  var searchKey = document.getElementById('admin_wa_filter_search')
-    ? document.getElementById('admin_wa_filter_search').value : '';
+  var idKelas = document.getElementById('admin_wa_filter_kelas') ? document.getElementById('admin_wa_filter_kelas').value : '';
+  var searchKey = document.getElementById('admin_wa_filter_search') ? document.getElementById('admin_wa_filter_search').value : '';
 
   google.script.run
     .withSuccessHandler(function(data) {
@@ -1490,7 +1461,6 @@ function renderWhatsappAdminTable() {
       var waSiswaBtn = hasWaSiswa
         ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waSiswa + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
         : '<span class="wa-number empty">-</span>';
-
       var waWaliBtn = hasWaWali
         ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waWali + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
         : '<span class="wa-number empty">-</span>';
@@ -1612,14 +1582,7 @@ function exportPDF() {
   ]];
 
   safeLaporan.forEach(function(d) {
-    tableBody.push([
-      shortDate(d.Tanggal),
-      d.Nama_Kelas || '-',
-      d.NIS || '-',
-      d.Nama_Siswa || '-',
-      d.Status || '-',
-      d.Keterangan || '-'
-    ]);
+    tableBody.push([shortDate(d.Tanggal), d.Nama_Kelas || '-', d.NIS || '-', d.Nama_Siswa || '-', d.Status || '-', d.Keterangan || '-']);
   });
 
   var docDefinition = {
@@ -1629,18 +1592,8 @@ function exportPDF() {
       { text: 'Laporan & Rekap Absensi Digital', style: 'header' },
       { text: 'Periode: ' + formatDateDisplay(start) + ' - ' + formatDateDisplay(end), style: 'subheader' },
       { text: 'Kelas: ' + kelasLabel, style: 'subheader', margin: [0, 0, 0, 10] },
-      {
-        table: {
-          headerRows: 1,
-          widths: ['auto', 'auto', 'auto', '*', 'auto', '*'],
-          body: tableBody
-        },
-        layout: {
-          fillColor: function (rowIndex) {
-            return rowIndex === 0 ? '#10b981' : (rowIndex % 2 === 0 ? '#f8fafc' : null);
-          }
-        }
-      }
+      { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', '*', 'auto', '*'], body: tableBody },
+        layout: { fillColor: function (rowIndex) { return rowIndex === 0 ? '#10b981' : (rowIndex % 2 === 0 ? '#f8fafc' : null); } } }
     ],
     styles: {
       header: { fontSize: 16, bold: true, margin: [0, 0, 0, 4], color: '#064e3b' },
@@ -1650,12 +1603,8 @@ function exportPDF() {
     defaultStyle: { fontSize: 8.5 }
   };
 
-  try {
-    pdfMake.createPdf(docDefinition).download('laporan_absensi_' + todayLocalISO() + '.pdf');
-  } catch (err) {
-    console.error('Gagal membuat PDF:', err);
-    Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membuat file PDF.' });
-  }
+  try { pdfMake.createPdf(docDefinition).download('laporan_absensi_' + todayLocalISO() + '.pdf'); }
+  catch (err) { console.error('Gagal membuat PDF:', err); Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membuat file PDF.' }); }
 }
 
 function resetFilterLaporan() {
@@ -1677,7 +1626,6 @@ function showPengaturanSiswa() {
   document.getElementById('settings-student-name').textContent = s.Nama_Siswa || '-';
   document.getElementById('settings-student-info').textContent = 'NIS: ' + (s.NIS || '-') + ' | Kelas: ' + (s.Nama_Kelas || '-');
   document.getElementById('settings-avatar-initial').textContent = (s.Nama_Siswa || 'S').charAt(0).toUpperCase();
-
   document.getElementById('current_password').value = '';
   document.getElementById('new_password').value = '';
   document.getElementById('confirm_password').value = '';
@@ -1691,21 +1639,11 @@ function handleGantiPassword(e) {
   var newPass = document.getElementById('new_password').value.trim();
   var confirmPass = document.getElementById('confirm_password').value.trim();
 
-  if (!currentPass || !newPass || !confirmPass) {
-    Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' });
-    return;
-  }
-  if (newPass.length < 6) {
-    Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' });
-    return;
-  }
-  if (newPass !== confirmPass) {
-    Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' });
-    return;
-  }
+  if (!currentPass || !newPass || !confirmPass) { Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' }); return; }
+  if (newPass.length < 6) { Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' }); return; }
+  if (newPass !== confirmPass) { Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' }); return; }
 
   var nis = String(currentUser.student.NIS).trim();
-
   showLoading();
   google.script.run
     .withSuccessHandler(function(msg) {
@@ -1715,10 +1653,7 @@ function handleGantiPassword(e) {
       document.getElementById('new_password').value = '';
       document.getElementById('confirm_password').value = '';
     })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message });
-    })
+    .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message }); })
     .gantiPasswordSiswa(nis, currentPass, newPass);
 }
 
@@ -1726,50 +1661,30 @@ function showPengaturanAdmin() {
   var adminName = currentUser ? currentUser.username || 'Administrator' : 'Administrator';
   document.getElementById('settings-admin-name').textContent = adminName;
   document.getElementById('settings-admin-info').textContent = 'Username: ' + (currentUser ? currentUser.username || 'admin' : 'admin');
-
   document.getElementById('admin_current_username').value = currentUser ? currentUser.username || 'admin' : 'admin';
   document.getElementById('admin_new_username').value = '';
-
   document.getElementById('admin_current_password').value = '';
   document.getElementById('admin_new_password').value = '';
   document.getElementById('admin_confirm_password').value = '';
 }
 
 function handleGantiUsernameAdmin() {
-  if (!currentUser) {
-    Swal.fire({ icon: 'error', title: 'Error', text: 'Sesi Anda telah berakhir. Silakan login kembali.' });
-    return;
-  }
+  if (!currentUser) { Swal.fire({ icon: 'error', title: 'Error', text: 'Sesi Anda telah berakhir.' }); return; }
 
   var currentUsername = document.getElementById('admin_current_username').value.trim();
   var newUsername = document.getElementById('admin_new_username').value.trim();
 
-  if (!currentUsername) {
-    Swal.fire({ icon: 'warning', title: 'Data Tidak Lengkap', text: 'Username saat ini tidak ditemukan.' });
-    return;
-  }
-  if (!newUsername || newUsername.length < 3) {
-    Swal.fire({ icon: 'warning', title: 'Username Terlalu Pendek', text: 'Username baru minimal 3 karakter.' });
-    return;
-  }
-  if (/\s/.test(newUsername)) {
-    Swal.fire({ icon: 'warning', title: 'Username Tidak Valid', text: 'Username tidak boleh mengandung spasi.' });
-    return;
-  }
-  if (currentUsername === newUsername) {
-    Swal.fire({ icon: 'info', title: 'Tidak Ada Perubahan', text: 'Username baru sama dengan username saat ini.' });
-    return;
-  }
+  if (!currentUsername) { Swal.fire({ icon: 'warning', title: 'Data Tidak Lengkap', text: 'Username saat ini tidak ditemukan.' }); return; }
+  if (!newUsername || newUsername.length < 3) { Swal.fire({ icon: 'warning', title: 'Username Terlalu Pendek', text: 'Username baru minimal 3 karakter.' }); return; }
+  if (/\s/.test(newUsername)) { Swal.fire({ icon: 'warning', title: 'Username Tidak Valid', text: 'Username tidak boleh mengandung spasi.' }); return; }
+  if (currentUsername === newUsername) { Swal.fire({ icon: 'info', title: 'Tidak Ada Perubahan', text: 'Username baru sama dengan username saat ini.' }); return; }
 
   Swal.fire({
     title: 'Konfirmasi Ganti Username',
     text: 'Anda akan mengganti username dari "' + currentUsername + '" menjadi "' + newUsername + '".',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Ya, Ganti',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#10b981',
-    cancelButtonColor: '#ef4444'
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Ya, Ganti', cancelButtonText: 'Batal',
+    confirmButtonColor: '#10b981', cancelButtonColor: '#ef4444'
   }).then(function(result) {
     if (result.isConfirmed) {
       showLoading();
@@ -1777,22 +1692,16 @@ function handleGantiUsernameAdmin() {
         .withSuccessHandler(function(msg) {
           hideLoading();
           Swal.fire({
-            icon: 'success',
-            title: 'Username Berhasil Diubah!',
+            icon: 'success', title: 'Username Berhasil Diubah!',
             text: msg + '\n\nAnda akan diarahkan ke halaman login.',
-            timer: 3000,
-            showConfirmButton: true,
-            confirmButtonText: 'Login Ulang'
+            timer: 3000, showConfirmButton: true, confirmButtonText: 'Login Ulang'
           }).then(function() {
             if (currentUser) currentUser.username = newUsername;
             logout();
             document.getElementById('username').value = newUsername;
           });
         })
-        .withFailureHandler(function(err) {
-          hideLoading();
-          Swal.fire({ icon: 'error', title: 'Gagal Ganti Username', text: err.message });
-        })
+        .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal Ganti Username', text: err.message }); })
         .gantiUsernameAdmin(currentUsername, newUsername);
     }
   });
@@ -1801,26 +1710,15 @@ function handleGantiUsernameAdmin() {
 function handleGantiPasswordAdmin(e) {
   e.preventDefault();
   if (!currentUser) return;
-
   var currentPass = document.getElementById('admin_current_password').value.trim();
   var newPass = document.getElementById('admin_new_password').value.trim();
   var confirmPass = document.getElementById('admin_confirm_password').value.trim();
 
-  if (!currentPass || !newPass || !confirmPass) {
-    Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' });
-    return;
-  }
-  if (newPass.length < 6) {
-    Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' });
-    return;
-  }
-  if (newPass !== confirmPass) {
-    Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' });
-    return;
-  }
+  if (!currentPass || !newPass || !confirmPass) { Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' }); return; }
+  if (newPass.length < 6) { Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' }); return; }
+  if (newPass !== confirmPass) { Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' }); return; }
 
   var username = String(currentUser.username || 'admin').trim();
-
   showLoading();
   google.script.run
     .withSuccessHandler(function(msg) {
@@ -1830,17 +1728,13 @@ function handleGantiPasswordAdmin(e) {
       document.getElementById('admin_new_password').value = '';
       document.getElementById('admin_confirm_password').value = '';
     })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message });
-    })
+    .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message }); })
     .gantiPasswordAdmin(username, currentPass, newPass);
 }
 
 function loadWhatsappSiswa() {
   if (!currentUser || !currentUser.student) return;
   var nis = String(currentUser.student.NIS).trim();
-
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
@@ -1863,14 +1757,8 @@ function handleUpdateWhatsappSiswa(e) {
   var waWali = document.getElementById('wa_wali').value.trim();
   var nis = String(currentUser.student.NIS).trim();
 
-  if (waSiswa && !/^\d{10,15}$/.test(waSiswa)) {
-    Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp pribadi harus 10-15 digit angka.' });
-    return;
-  }
-  if (waWali && !/^\d{10,15}$/.test(waWali)) {
-    Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp wali harus 10-15 digit angka.' });
-    return;
-  }
+  if (waSiswa && !/^\d{10,15}$/.test(waSiswa)) { Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp pribadi harus 10-15 digit angka.' }); return; }
+  if (waWali && !/^\d{10,15}$/.test(waWali)) { Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp wali harus 10-15 digit angka.' }); return; }
 
   showLoading();
   google.script.run
@@ -1879,10 +1767,7 @@ function handleUpdateWhatsappSiswa(e) {
       Swal.fire({ icon: 'success', title: 'Berhasil', text: msg, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
       loadWhatsappSiswa();
     })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
-    })
+    .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Error', text: err.message }); })
     .updateWhatsappSiswa(nis, waSiswa, waWali);
 }
 
@@ -1892,7 +1777,6 @@ function handleUpdateWhatsappSiswa(e) {
 function loadWhatsappGTK() {
   if (!currentUser || !currentUser.gtk) return;
   var nbm = String(currentUser.gtk.NBM).trim();
-
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
@@ -1907,14 +1791,10 @@ function loadWhatsappGTK() {
 function handleUpdateWhatsappGTK(e) {
   e.preventDefault();
   if (!currentUser || !currentUser.gtk) return;
-
   var waGTK = document.getElementById('wa_gtk_input').value.trim();
   var nbm = String(currentUser.gtk.NBM).trim();
 
-  if (waGTK && !/^\d{10,15}$/.test(waGTK)) {
-    Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp harus 10-15 digit angka.' });
-    return;
-  }
+  if (waGTK && !/^\d{10,15}$/.test(waGTK)) { Swal.fire({ icon: 'warning', title: 'Format Salah', text: 'Nomor WhatsApp harus 10-15 digit angka.' }); return; }
 
   showLoading();
   google.script.run
@@ -1922,10 +1802,7 @@ function handleUpdateWhatsappGTK(e) {
       hideLoading();
       Swal.fire({ icon: 'success', title: 'Berhasil', text: msg, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
     })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
-    })
+    .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Error', text: err.message }); })
     .updateWhatsappGTK(nbm, waGTK);
 }
 
@@ -1937,7 +1814,6 @@ function showPengaturanGTK() {
   var g = currentUser.gtk;
   document.getElementById('settings-gtk-name').textContent = g.Nama_GTK || '-';
   document.getElementById('settings-gtk-info').textContent = 'NBM: ' + (g.NBM || '-') + ' | Tugas: ' + (g.Tugas || '-');
-
   document.getElementById('gtk_current_password').value = '';
   document.getElementById('gtk_new_password').value = '';
   document.getElementById('gtk_confirm_password').value = '';
@@ -1951,21 +1827,11 @@ function handleGantiPasswordGTK(e) {
   var newPass = document.getElementById('gtk_new_password').value.trim();
   var confirmPass = document.getElementById('gtk_confirm_password').value.trim();
 
-  if (!currentPass || !newPass || !confirmPass) {
-    Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' });
-    return;
-  }
-  if (newPass.length < 6) {
-    Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' });
-    return;
-  }
-  if (newPass !== confirmPass) {
-    Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' });
-    return;
-  }
+  if (!currentPass || !newPass || !confirmPass) { Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Harap isi semua field password.' }); return; }
+  if (newPass.length < 6) { Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' }); return; }
+  if (newPass !== confirmPass) { Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Password baru dan konfirmasi harus sama.' }); return; }
 
   var nbm = String(currentUser.gtk.NBM).trim();
-
   showLoading();
   google.script.run
     .withSuccessHandler(function(msg) {
@@ -1975,10 +1841,7 @@ function handleGantiPasswordGTK(e) {
       document.getElementById('gtk_new_password').value = '';
       document.getElementById('gtk_confirm_password').value = '';
     })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message });
-    })
+    .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal Ganti Password', text: err.message }); })
     .gantiPasswordGTK(nbm, currentPass, newPass);
 }
 
@@ -1987,26 +1850,16 @@ function handleGantiPasswordGTK(e) {
 // =============================================
 function logout() {
   if (typeof Swal === 'undefined') {
-    if (confirm("Apakah Anda yakin ingin mengakhiri sesi?")) {
-      eksekusiLogout();
-    }
+    if (confirm("Apakah Anda yakin ingin mengakhiri sesi?")) eksekusiLogout();
     return;
   }
-
   Swal.fire({
     title: 'Konfirmasi Keluar',
     text: 'Apakah Anda yakin ingin mengakhiri sesi?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Ya, Keluar',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#ef4444',
-    cancelButtonColor: '#64748b'
-  }).then(function(r) {
-    if (r.isConfirmed) {
-      eksekusiLogout();
-    }
-  });
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal',
+    confirmButtonColor: '#ef4444', cancelButtonColor: '#64748b'
+  }).then(function(r) { if (r.isConfirmed) eksekusiLogout(); });
 }
 
 function eksekusiLogout() {
@@ -2030,7 +1883,12 @@ function eksekusiLogout() {
 
   var appLayout = document.getElementById('app-layout');
   var loginPage = document.getElementById('login-page');
+  var loginDudiPage = document.getElementById('login-dudi-page');
+  var pagePembimbing = document.getElementById('page-pembimbing');
+
   if (appLayout) appLayout.classList.add('hidden');
+  if (loginDudiPage) loginDudiPage.classList.add('hidden');
+  if (pagePembimbing) pagePembimbing.classList.add('hidden');
   if (loginPage) loginPage.classList.remove('hidden');
 
   ['username', 'password', 'nbm_login', 'password_gtk', 'nis_login', 'password_siswa', 'pemb_kode', 'pemb_pin'].forEach(function(id) {
@@ -2038,13 +1896,8 @@ function eksekusiLogout() {
     if (el) el.value = '';
   });
 
-  if (typeof destroyCharts === 'function') {
-    destroyCharts();
-  }
-
-  if (typeof switchLoginTab === 'function') {
-    switchLoginTab('admin');
-  }
+  if (typeof destroyCharts === 'function') destroyCharts();
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
 }
 
 // =============================================
@@ -2060,65 +1913,33 @@ document.addEventListener('DOMContentLoaded', function() {
   // ⭐ PRIORITAS 2: Auto-login pembimbing dari localStorage
   if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
 
-  // ===== Set default tanggal =====
   var tglAbsen = document.getElementById('tgl_absen');
   if (tglAbsen) tglAbsen.value = todayLocalISO();
-
   var dashDate = document.getElementById('dash_date');
   if (dashDate) dashDate.value = todayLocalISO();
 
-  // ===== Event listener: pencarian tugas admin =====
   var searchInput = document.getElementById('admin_filter_tugas_search');
   if (searchInput) {
     searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        loadTugasAdmin();
-      }
+      if (e.key === 'Enter') { e.preventDefault(); loadTugasAdmin(); }
     });
   }
-
   var filterKelas = document.getElementById('admin_filter_tugas_kelas');
-  if (filterKelas) {
-    filterKelas.addEventListener('change', function() { loadTugasAdmin(); });
-  }
+  if (filterKelas) filterKelas.addEventListener('change', function() { loadTugasAdmin(); });
 
-  // ===== Event listener: pencarian WhatsApp admin =====
   var waSearchInput = document.getElementById('admin_wa_filter_search');
   if (waSearchInput) {
     waSearchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        loadWhatsappAdmin();
-      }
+      if (e.key === 'Enter') { e.preventDefault(); loadWhatsappAdmin(); }
     });
   }
-
   var waFilterKelas = document.getElementById('admin_wa_filter_kelas');
-  if (waFilterKelas) {
-    waFilterKelas.addEventListener('change', function() { loadWhatsappAdmin(); });
-  }
+  if (waFilterKelas) waFilterKelas.addEventListener('change', function() { loadWhatsappAdmin(); });
 
-  // ===== Event listener: pencarian alamat peta =====
   var mapSearchInput = document.getElementById('map_search_input');
   if (mapSearchInput) {
     mapSearchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        searchLocation();
-      }
+      if (e.key === 'Enter') { e.preventDefault(); searchLocation(); }
     });
   }
 });
-
-// ⭐ Tampilkan halaman login DUDI
-function showLoginDUDI() {
-  document.getElementById('login-dudi-page')?.classList.add('hidden');
-  document.getElementById('login-page')?.classList.remove('hidden');
-}
-
-// ⭐ Kembali ke login utama
-function showLoginUtama() {
-  document.getElementById('login-dudi-page').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
-}
