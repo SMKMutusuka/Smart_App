@@ -566,6 +566,26 @@ function submitFinalAbsensi(tgl, kelas, payload) {
 // =============================================
 function prepareStudentAbsenPage() {
   if (!currentUser || !currentUser.student) return;
+  
+  // ⭐ BLOKIR kalau siswa PKL aktif
+  if (typeof pklInfoSiswa !== 'undefined' && pklInfoSiswa) {
+    var container = document.getElementById('student-absen-page-content');
+    if (container) {
+      container.innerHTML =
+        '<div class="card" style="text-align:center;padding:36px 18px;">' +
+          '<div style="font-size:3.5em;color:#f59e0b;margin-bottom:12px;"><i class="fas fa-briefcase"></i></div>' +
+          '<h3 style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:6px;">Anda Sedang PKL</h3>' +
+          '<p style="font-size:13px;color:var(--text-muted);line-height:1.5;max-width:440px;margin:0 auto 20px;">' +
+            'Absensi sekolah tidak tersedia selama PKL. Silakan gunakan menu <strong>Presensi PKL</strong> untuk absen di DUDI.' +
+          '</p>' +
+          '<button type="button" class="btn btn-primary" onclick="showPage(\'page-pkl-presensi\', document.getElementById(\'menu-pkl-presensi\').querySelector(\'a\'))">' +
+            '<i class="fas fa-briefcase"></i> Ke Presensi PKL' +
+          '</button>' +
+        '</div>';
+    }
+    return;
+  }
+  
   var todayStr = todayLocalISO();
   var studentNisClean = String(currentUser.student.NIS).trim();
 
