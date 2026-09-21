@@ -2113,8 +2113,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ⭐ Tampilkan halaman login DUDI
 function showLoginDUDI() {
-  document.getElementById('login-page').classList.add('hidden');
-  document.getElementById('login-dudi-page').classList.remove('hidden');
+  document.getElementById('login-dudi-page')?.classList.add('hidden');
+  document.getElementById('login-page')?.classList.remove('hidden');
 }
 
 // ⭐ Kembali ke login utama
