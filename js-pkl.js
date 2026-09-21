@@ -245,7 +245,7 @@ function kirimLinkPembimbingWA(idDudi) {
       cancelButtonText: 'Batal',
       confirmButtonColor: '#25D366'
     }).then(function(r) {
-      if (r.isConfirmed) window.open(url, '_blank');
+      if (r.isConfirmed) window.open(waMeUrl, '_blank');
     });
   }
 }
