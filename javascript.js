@@ -574,6 +574,10 @@ function handleLoginSiswa(e) {
         Swal.fire({ icon: 'success', title: 'Berhasil Masuk', text: 'Selamat datang, ' + res.student.Nama_Siswa, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
+        // ⭐ Cek apakah siswa PKL aktif
+        checkPKLSiswaAktif(String(res.student.NIS).trim(), function(pklInfo) {
+          console.log('[Login] PKL aktif:', !!pklInfo);
+        });
         initSiswa();
       }
     })
@@ -658,6 +662,8 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-dashboard-siswa') loadStudentDashboard();
   if (pageId === 'page-dashboard-gtk') loadGTKDashboard();
   if (pageId === 'page-absen-siswa') prepareStudentAbsenPage();
+  if (pageId === 'page-pkl-presensi') loadPKLPresensiPage();
+  if (pageId === 'page-pkl-jurnal') loadPKLJurnalPage();
   if (pageId === 'page-tugas-admin') loadTugasAdmin();
   if (pageId === 'page-tugas-siswa') loadTugasSiswa();
   if (pageId === 'page-pengaturan-siswa') showPengaturanSiswa();
