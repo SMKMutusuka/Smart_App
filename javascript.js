@@ -2015,6 +2015,16 @@ function logout() {
 
 function eksekusiLogout() {
   if (typeof closeWebcam === 'function') closeWebcam();
+  
+  // ⭐ Reset state PKL
+  if (typeof pklInfoSiswa !== 'undefined') pklInfoSiswa = null;
+  if (typeof absenPKLHariIni !== 'undefined') absenPKLHariIni = null;
+  if (typeof jurnalPKLHariIni !== 'undefined') jurnalPKLHariIni = null;
+  var menuP = document.getElementById('menu-pkl-presensi');
+  var menuJ = document.getElementById('menu-pkl-jurnal');
+  if (menuP) menuP.classList.add('hidden');
+  if (menuJ) menuJ.classList.add('hidden');
+  
   currentUser = null;
 
   var sidebar = document.getElementById('sidebar');
