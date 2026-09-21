@@ -650,6 +650,7 @@ function showPage(pageId, clickedLink) {
   }
   if (pageId === 'page-lokasi-kelas') loadLokasiSekolah();
   if (pageId === 'page-dudi') loadDUDI();
+  if (pageId === 'page-pkl-assign') loadAssignPKL();
   if (pageId === 'page-kelas') loadKelas();
   if (pageId === 'page-siswa') loadSiswa();
   if (pageId === 'page-laporan') initLaporan();
