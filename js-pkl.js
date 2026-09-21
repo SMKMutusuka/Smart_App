@@ -322,21 +322,35 @@ function loadAssignPKL() {
 }
 
 function loadDropdownsPKL() {
-  // Load siswa XII
+  // Load siswa XII (dengan filter kelas)
   google.script.run
-    .withSuccessHandler(function(list) {
-      siswaXIICache = Array.isArray(list) ? list : [];
-      var sel = document.getElementById('pkl_siswa');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">-- Pilih Siswa XII --</option>';
-      siswaXIICache.forEach(function(s) {
-        var opt = document.createElement('option');
-        opt.value = s.NIS;
-        opt.textContent = s.Nama_Kelas + ' | ' + s.NIS + ' — ' + s.Nama_Siswa;
-        sel.appendChild(opt);
-      });
+    .withSuccessHandler(function(res) {
+      var siswaList = (res && res.siswa) ? res.siswa : [];
+      var kelasList = (res && res.kelasList) ? res.kelasList : [];
+      
+      siswaXIICache = siswaList;
+      
+      // Isi dropdown FILTER KELAS
+      var selKelas = document.getElementById('pkl_filter_kelas');
+      if (selKelas) {
+        selKelas.innerHTML = '<option value="">-- Semua Kelas XII --</option>';
+        kelasList.forEach(function(k) {
+          var opt = document.createElement('option');
+          opt.value = k;
+          opt.textContent = k;
+          selKelas.appendChild(opt);
+        });
+      }
+      
+      // Isi dropdown SISWA (semua dulu)
+      populateDropdownSiswa(siswaList);
+      
+      console.log('[PKL] Siswa XII:', siswaList.length, '| Kelas:', kelasList.length);
     })
-    .withFailureHandler(function(err) { console.error(err); })
+    .withFailureHandler(function(err) {
+      console.error('Gagal load siswa XII:', err);
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    })
     .getSiswaXII();
 
   // Load DUDI
@@ -357,34 +371,39 @@ function loadDropdownsPKL() {
     .getAllDUDI();
 }
 
-function renderPKLTable() {
-  var tbody = document.getElementById('tbodyPKL');
-  if (!tbody) return;
+// ⭐ Isi dropdown siswa (bisa difilter berdasarkan kelas)
+function populateDropdownSiswa(siswaList) {
+  var sel = document.getElementById('pkl_siswa');
+  if (!sel) return;
+  
+  var currentVal = sel.value;
+  sel.innerHTML = '<option value="">-- Pilih Siswa XII --</option>';
+  
+  siswaList.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.NIS;
+    opt.textContent = s.Nama_Kelas + ' | ' + s.NIS + ' — ' + s.Nama_Siswa;
+    sel.appendChild(opt);
+  });
+  
+  if (currentVal) sel.value = currentVal;
+}
 
-  if (pklCache.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Belum ada siswa PKL.</td></tr>';
+// ⭐ Filter siswa berdasarkan kelas (dipanggil saat dropdown kelas berubah)
+function filterSiswaByKelas() {
+  var selKelas = document.getElementById('pkl_filter_kelas');
+  var kelasDipilih = selKelas ? selKelas.value : '';
+  
+  if (!kelasDipilih) {
+    populateDropdownSiswa(siswaXIICache);
     return;
   }
-
-  var htmlBuffer = pklCache.map(function(p) {
-    var periode = (p.Tanggal_Mulai || '-') + ' s/d ' + (p.Tanggal_Selesai || '-');
-    var statusBadge = p.Status === 'Aktif'
-      ? '<span class="badge-status-table badge-hadir">Aktif</span>'
-      : '<span class="badge-status-table badge-alpa">Selesai</span>';
-    return '<tr>' +
-      '<td>' + escapeHtml(p.NIS) + '</td>' +
-      '<td style="text-align:left;"><strong>' + escapeHtml(p.Nama_Siswa) + '</strong></td>' +
-      '<td>' + escapeHtml(p.Nama_Kelas) + '</td>' +
-      '<td style="text-align:left;">' + escapeHtml(p.Nama_DUDI) + '</td>' +
-      '<td style="font-size:11px;">' + periode + '</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td>' +
-        '<button class="btn btn-outline btn-sm" onclick="editPKL(\'' + p.NIS + '\')"><i class="fas fa-edit"></i></button> ' +
-        '<button class="btn btn-danger btn-sm" onclick="hapusPKL(\'' + p.NIS + '\')"><i class="fas fa-trash"></i></button>' +
-      '</td>' +
-    '</tr>';
+  
+  var filtered = siswaXIICache.filter(function(s) {
+    return s.Nama_Kelas === kelasDipilih;
   });
-  tbody.innerHTML = htmlBuffer.join('');
+  
+  populateDropdownSiswa(filtered);
 }
 
 function simpanAssignPKL(e) {
