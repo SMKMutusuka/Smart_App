@@ -66,12 +66,17 @@ function cekHashPembimbing() {
   var hash = window.location.hash || '';
   var match = hash.match(/#pembimbing=([A-Za-z0-9]+)/);
   if (!match) return false;
-  
+
   var kode = decodeURIComponent(match[1]).toUpperCase();
-  switchLoginTab('pembimbing');
+
+  // ⭐ Tampilkan halaman login DUDI, bukan tab
+  if (typeof showLoginDUDI === 'function') {
+    showLoginDUDI();
+  }
+
   var inpKode = document.getElementById('pemb_kode');
   if (inpKode) inpKode.value = kode;
-  
+
   var session = ambilSessionPembimbing();
   if (session && session.kode === kode) {
     cobaAutoLoginPembimbing();
