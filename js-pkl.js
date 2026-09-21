@@ -964,7 +964,7 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
       '<div class="card">' +
         '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-pen" style="color:var(--primary);"></i> Tulis Jurnal Hari Ini</div>' +
         '<div class="form-group">' +
-          '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini (min 10 karakter)</label>' +
+          '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini (Deskripsikan minimal 10 kata)</label>' +
           '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli dan tune up mesin..."></textarea>' +
         '</div>' +
         '<div class="form-group">' +
