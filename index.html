@@ -102,6 +102,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       'getKelasForFilter', 'getSiswaTidakHadir',
       'aiGuruGenerate', 'generateLaporanGTKPDF',
       'getAllDUDI', 'saveDUDI', 'deleteDUDI', 'generateKodeAksesDUDI',
+      'getSiswaXII', 'getAllPKL', 'savePKL', 'deletePKL', 'getPKLByNIS', 'getPKLByDUDI',
     ];
 
     backendFunctions.forEach(function(fnName) {
@@ -225,6 +226,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       <li><a href="#" onclick="showPage('page-approval-admin', this); return false;" data-page="approval-admin"><i class="fas fa-check-double"></i> Approval Absensi <span id="approval-badge" class="hidden" style="background:#ef4444;color:#fff;padding:1px 8px;border-radius:12px;font-size:10px;font-weight:700;margin-left:auto;">0</span></a></li>
       <li><a href="#" onclick="showPage('page-lokasi-kelas', this); return false;" data-page="lokasi-kelas"><i class="fas fa-map-marker-alt"></i> Lokasi Sekolah</a></li>
       <li><a href="#" onclick="showPage('page-dudi', this); return false;" data-page="dudi"><i class="fas fa-building"></i> Data DUDI (PKL)</a></li>
+      <li><a href="#" onclick="showPage('page-pkl-assign', this); return false;" data-page="pkl-assign"><i class="fas fa-user-tie"></i> Assign PKL Siswa</a></li>
       <li><a href="#" onclick="showPage('page-kelas', this); return false;" data-page="kelas"><i class="fas fa-chalkboard"></i> Data Kelas</a></li>
       <li><a href="#" onclick="showPage('page-siswa', this); return false;" data-page="siswa"><i class="fas fa-users"></i> Data Siswa</a></li>
       <li><a href="#" onclick="showPage('page-input-absen', this); return false;" data-page="input-absen"><i class="fas fa-clipboard-check"></i> Input Absensi</a></li>
@@ -825,6 +827,83 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
         </div>
       </div>
     </section>
+    <section id="page-pkl-assign" class="page hidden">
+  <h1 class="page-title">Assign PKL Siswa</h1>
+
+  <div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">
+    <div style="font-size:15px;font-weight:800;color:var(--primary-dark);">
+      <i class="fas fa-user-tie"></i> Pasangkan Siswa XII ke DUDI
+    </div>
+    <div style="font-size:12.5px;color:#065f46;margin-top:2px;">
+      Siswa yang di-assign akan mendapat menu PKL saat login.
+    </div>
+  </div>
+
+  <div class="card">
+    <form id="formAssignPKL" onsubmit="simpanAssignPKL(event)">
+      <input type="hidden" id="pkl_edit_mode" value="false">
+
+      <div class="form-group">
+        <label for="pkl_siswa"><i class="fas fa-user-graduate"></i> Siswa Kelas XII</label>
+        <select id="pkl_siswa" class="form-control" required>
+          <option value="">-- Pilih Siswa XII --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="pkl_dudi"><i class="fas fa-building"></i> DUDI / Tempat PKL</label>
+        <select id="pkl_dudi" class="form-control" required>
+          <option value="">-- Pilih DUDI --</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:150px;">
+          <label for="pkl_mulai"><i class="fas fa-calendar-check"></i> Tanggal Mulai</label>
+          <input type="date" id="pkl_mulai" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex:1;min-width:150px;">
+          <label for="pkl_selesai"><i class="fas fa-calendar-times"></i> Tanggal Selesai</label>
+          <input type="date" id="pkl_selesai" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex:0 0 130px;">
+          <label for="pkl_status">Status</label>
+          <select id="pkl_status" class="form-control">
+            <option value="Aktif">Aktif</option>
+            <option value="Selesai">Selesai</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan PKL</button>
+        <button type="button" class="btn btn-outline" onclick="resetFormPKL()"><i class="fas fa-times"></i> Batal</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="chart-card-title" style="margin-bottom:14px;">
+      <i class="fas fa-list"></i> Daftar Siswa PKL
+    </div>
+    <div class="laporan-scroll">
+      <table class="table-laporan">
+        <thead>
+          <tr>
+            <th>NIS</th>
+            <th>Nama Siswa</th>
+            <th>Kelas</th>
+            <th>DUDI</th>
+            <th>Periode</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyPKL"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
     <!-- ============================================= -->
     <!-- DATA DUDI (PKL) -->
     <!-- ============================================= -->
