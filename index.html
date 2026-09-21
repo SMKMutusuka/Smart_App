@@ -101,6 +101,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       'getSemuaTugasAdmin', 'simpanNilaiDirectTugas', 'hapusDirectTugas',
       'getKelasForFilter', 'getSiswaTidakHadir',
       'aiGuruGenerate', 'generateLaporanGTKPDF'
+      'getAllDUDI', 'saveDUDI', 'deleteDUDI', 'generateKodeAksesDUDI'
     ];
 
     backendFunctions.forEach(function(fnName) {
@@ -223,6 +224,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       <li><a href="#" onclick="showPage('page-dashboard-admin', this); return false;" class="active" data-page="dashboard-admin"><i class="fas fa-chart-line"></i> Beranda Admin</a></li>
       <li><a href="#" onclick="showPage('page-approval-admin', this); return false;" data-page="approval-admin"><i class="fas fa-check-double"></i> Approval Absensi <span id="approval-badge" class="hidden" style="background:#ef4444;color:#fff;padding:1px 8px;border-radius:12px;font-size:10px;font-weight:700;margin-left:auto;">0</span></a></li>
       <li><a href="#" onclick="showPage('page-lokasi-kelas', this); return false;" data-page="lokasi-kelas"><i class="fas fa-map-marker-alt"></i> Lokasi Sekolah</a></li>
+      <li><a href="#" onclick="showPage('page-dudi', this); return false;" data-page="dudi"><i class="fas fa-building"></i> Data DUDI (PKL)</a></li>
       <li><a href="#" onclick="showPage('page-kelas', this); return false;" data-page="kelas"><i class="fas fa-chalkboard"></i> Data Kelas</a></li>
       <li><a href="#" onclick="showPage('page-siswa', this); return false;" data-page="siswa"><i class="fas fa-users"></i> Data Siswa</a></li>
       <li><a href="#" onclick="showPage('page-input-absen', this); return false;" data-page="input-absen"><i class="fas fa-clipboard-check"></i> Input Absensi</a></li>
@@ -823,7 +825,115 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
         </div>
       </div>
     </section>
+    <!-- ============================================= -->
+    <!-- DATA DUDI (PKL) -->
+    <!-- ============================================= -->
+    <section id="page-dudi" class="page hidden">
+      <h1 class="page-title">Data DUDI (Tempat PKL)</h1>
 
+      <div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:800;color:var(--primary-dark);">
+          <i class="fas fa-building"></i> Kelola Tempat PKL
+        </div>
+        <div style="font-size:12.5px;color:#065f46;margin-top:2px;">
+          Isi koordinat GPS lokasi DUDI + radius, dan kode akses untuk pembimbing.
+        </div>
+      </div>
+
+      <div class="card">
+        <form id="formDUDI" onsubmit="simpanDUDI(event)">
+          <input type="hidden" id="dudi_id">
+          
+          <div class="form-group">
+            <label for="dudi_nama"><i class="fas fa-signature"></i> Nama DUDI</label>
+            <input type="text" id="dudi_nama" class="form-control" required placeholder="Contoh: Bengkel Jaya Motor">
+          </div>
+
+          <div class="form-group">
+            <label for="dudi_alamat"><i class="fas fa-map"></i> Alamat</label>
+            <input type="text" id="dudi_alamat" class="form-control" placeholder="Jl. Slamet Riyadi No. 123">
+          </div>
+
+          <div class="form-group">
+            <label><i class="fas fa-location-dot"></i> Titik GPS DUDI</label>
+            <div class="map-search-box" style="margin-bottom:8px;">
+              <input type="text" id="dudi_search_input" class="form-control" placeholder="Cari alamat DUDI...">
+              <button type="button" class="btn btn-outline btn-sm" onclick="searchDUDILocation()" style="min-height:42px;">Cari</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="useCurrentLocationForDUDI()" style="min-height:42px;">
+                <i class="fas fa-crosshairs"></i> Lokasi Saya
+              </button>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div class="form-group" style="flex:1;min-width:120px;">
+                <label for="dudi_lat">Latitude</label>
+                <input type="text" id="dudi_lat" class="form-control" required placeholder="-7.592900">
+              </div>
+              <div class="form-group" style="flex:1;min-width:120px;">
+                <label for="dudi_lng">Longitude</label>
+                <input type="text" id="dudi_lng" class="form-control" required placeholder="110.824800">
+              </div>
+              <div class="form-group" style="flex:0 0 130px;">
+                <label for="dudi_radius">Radius (m)</label>
+                <input type="number" id="dudi_radius" class="form-control" value="20" min="5" max="5000" required>
+              </div>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+              <i class="fas fa-info-circle"></i> Gunakan radius 20m untuk presensi PKL.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:180px;">
+              <label for="dudi_pembimbing"><i class="fas fa-user-tie"></i> Nama Pembimbing</label>
+              <input type="text" id="dudi_pembimbing" class="form-control" placeholder="Budi Santoso">
+            </div>
+            <div class="form-group" style="flex:1;min-width:150px;">
+              <label for="dudi_wa"><i class="fab fa-whatsapp"></i> WA Pembimbing</label>
+              <input type="tel" id="dudi_wa" class="form-control" placeholder="62812345678">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="dudi_kode"><i class="fas fa-key"></i> Kode Akses Pembimbing</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="dudi_kode" class="form-control" required placeholder="DUDI001">
+              <button type="button" class="btn btn-outline" onclick="generateKode()" style="min-width:100px;">Acak</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              <i class="fas fa-info-circle"></i> Kode ini dipakai pembimbing untuk buka link khusus.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan DUDI</button>
+            <button type="button" class="btn btn-outline" onclick="resetFormDUDI()"><i class="fas fa-times"></i> Batal</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="chart-card-title" style="margin-bottom:14px;">
+          <i class="fas fa-list"></i> Daftar DUDI
+        </div>
+        <div class="laporan-scroll">
+          <table class="table-laporan" id="tableDUDI">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nama DUDI</th>
+                <th>Pembimbing</th>
+                <th>Koordinat</th>
+                <th>Radius</th>
+                <th>Kode Akses</th>
+                <th>Link Pembimbing</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDUDI"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
     <!-- ============================================= -->
     <!-- LOKASI SEKOLAH -->
     <!-- ============================================= -->
@@ -1475,6 +1585,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
 <script src="js-maps.js"></script>
 <script src="js-tugas.js"></script>
 <script src="js-ai-guru.js"></script>
-
+<script src="js-pkl.js"></script>
 </body>
 </html>
