@@ -2098,7 +2098,5 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.key === 'Enter') {
         e.preventDefault();
         searchLocation();
-      }
-    });
   }
 });
