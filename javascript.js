@@ -604,6 +604,7 @@ function setupRoleUI(role) {
   } else if (role === 'Guru' || role === 'Tendik') {
     mGtk.classList.remove('hidden');
     roleTitle.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Panel GTK';
+  if (pageId === 'page-approval-jurnal-pkl') loadApprovalJurnalGuru();
 
     var menuGuruTugas = document.getElementById('menu-item-guru-tugas');
     var menuAIGuru = document.getElementById('menu-item-ai-guru');
