@@ -298,3 +298,170 @@ function useCurrentLocationForDUDI() {
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
+// =============================================
+// ASSIGN PKL — Frontend
+// =============================================
+var pklCache = [];
+var siswaXIICache = [];
+var dudiListCache = [];
+
+function loadAssignPKL() {
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(list) {
+      hideLoading();
+      pklCache = Array.isArray(list) ? list : [];
+      renderPKLTable();
+      loadDropdownsPKL();
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    })
+    .getAllPKL();
+}
+
+function loadDropdownsPKL() {
+  // Load siswa XII
+  google.script.run
+    .withSuccessHandler(function(list) {
+      siswaXIICache = Array.isArray(list) ? list : [];
+      var sel = document.getElementById('pkl_siswa');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Pilih Siswa XII --</option>';
+      siswaXIICache.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.NIS;
+        opt.textContent = s.Nama_Kelas + ' | ' + s.NIS + ' — ' + s.Nama_Siswa;
+        sel.appendChild(opt);
+      });
+    })
+    .withFailureHandler(function(err) { console.error(err); })
+    .getSiswaXII();
+
+  // Load DUDI
+  google.script.run
+    .withSuccessHandler(function(list) {
+      dudiListCache = Array.isArray(list) ? list : [];
+      var sel = document.getElementById('pkl_dudi');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Pilih DUDI --</option>';
+      dudiListCache.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = d.ID_DUDI;
+        opt.textContent = d.Nama_DUDI + ' (' + d.ID_DUDI + ')';
+        sel.appendChild(opt);
+      });
+    })
+    .withFailureHandler(function(err) { console.error(err); })
+    .getAllDUDI();
+}
+
+function renderPKLTable() {
+  var tbody = document.getElementById('tbodyPKL');
+  if (!tbody) return;
+
+  if (pklCache.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Belum ada siswa PKL.</td></tr>';
+    return;
+  }
+
+  var htmlBuffer = pklCache.map(function(p) {
+    var periode = (p.Tanggal_Mulai || '-') + ' s/d ' + (p.Tanggal_Selesai || '-');
+    var statusBadge = p.Status === 'Aktif'
+      ? '<span class="badge-status-table badge-hadir">Aktif</span>'
+      : '<span class="badge-status-table badge-alpa">Selesai</span>';
+    return '<tr>' +
+      '<td>' + escapeHtml(p.NIS) + '</td>' +
+      '<td style="text-align:left;"><strong>' + escapeHtml(p.Nama_Siswa) + '</strong></td>' +
+      '<td>' + escapeHtml(p.Nama_Kelas) + '</td>' +
+      '<td style="text-align:left;">' + escapeHtml(p.Nama_DUDI) + '</td>' +
+      '<td style="font-size:11px;">' + periode + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' +
+        '<button class="btn btn-outline btn-sm" onclick="editPKL(\'' + p.NIS + '\')"><i class="fas fa-edit"></i></button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="hapusPKL(\'' + p.NIS + '\')"><i class="fas fa-trash"></i></button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = htmlBuffer.join('');
+}
+
+function simpanAssignPKL(e) {
+  e.preventDefault();
+  var data = {
+    NIS: document.getElementById('pkl_siswa').value,
+    ID_DUDI: document.getElementById('pkl_dudi').value,
+    Tanggal_Mulai: document.getElementById('pkl_mulai').value,
+    Tanggal_Selesai: document.getElementById('pkl_selesai').value,
+    Status: document.getElementById('pkl_status').value
+  };
+
+  if (!data.NIS || !data.ID_DUDI || !data.Tanggal_Mulai || !data.Tanggal_Selesai) {
+    Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Semua field wajib diisi.' });
+    return;
+  }
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+      resetFormPKL();
+      loadAssignPKL();
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+    })
+    .savePKL(data);
+}
+
+function editPKL(nis) {
+  var p = pklCache.find(function(x) { return String(x.NIS) === String(nis); });
+  if (!p) return;
+
+  document.getElementById('pkl_siswa').value = p.NIS;
+  document.getElementById('pkl_dudi').value = p.ID_DUDI;
+  document.getElementById('pkl_mulai').value = p.Tanggal_Mulai;
+  document.getElementById('pkl_selesai').value = p.Tanggal_Selesai;
+  document.getElementById('pkl_status').value = p.Status;
+  document.getElementById('pkl_edit_mode').value = 'true';
+  document.getElementById('formAssignPKL').scrollIntoView({ behavior: 'smooth' });
+}
+
+function hapusPKL(nis) {
+  Swal.fire({
+    title: 'Hapus Data PKL?',
+    text: 'Siswa NIS ' + nis + ' akan dihapus dari daftar PKL.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#ef4444'
+  }).then(function(r) {
+    if (r.isConfirmed) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+          loadAssignPKL();
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+        })
+        .deletePKL(nis);
+    }
+  });
+}
+
+function resetFormPKL() {
+  ['pkl_siswa', 'pkl_dudi', 'pkl_mulai', 'pkl_selesai'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('pkl_status').value = 'Aktif';
+  document.getElementById('pkl_edit_mode').value = 'false';
+}
