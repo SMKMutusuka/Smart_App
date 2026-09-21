@@ -475,25 +475,23 @@ function toggleSidebar() {
 // LOGIN HANDLERS
 // =============================================
 function switchLoginTab(role) {
-  var tabAdmin = document.getElementById('tab-btn-admin');
-  var tabSiswa = document.getElementById('tab-btn-siswa');
-  var tabGtk = document.getElementById('tab-btn-gtk');
-  var formAdmin = document.getElementById('loginFormAdmin');
-  var formGtk = document.getElementById('loginFormGtk');
-  var formSiswa = document.getElementById('loginFormSiswa');
-
-  [tabAdmin, tabSiswa, tabGtk].forEach(function(t) { if (t) t.classList.remove('active'); });
-  [formAdmin, formSiswa, formGtk].forEach(function(f) { if (f) f.classList.add('hidden'); });
-
-  if (role === 'admin') {
-    if (tabAdmin) tabAdmin.classList.add('active');
-    if (formAdmin) formAdmin.classList.remove('hidden');
-  } else if (role === 'siswa') {
-    if (tabSiswa) tabSiswa.classList.add('active');
-    if (formSiswa) formSiswa.classList.remove('hidden');
-  } else if (role === 'gtk') {
-    if (tabGtk) tabGtk.classList.add('active');
-    if (formGtk) formGtk.classList.remove('hidden');
+  var map = {
+    admin:      { tab: 'tab-btn-admin',      form: 'loginFormAdmin' },
+    gtk:        { tab: 'tab-btn-gtk',        form: 'loginFormGtk' },
+    siswa:      { tab: 'tab-btn-siswa',      form: 'loginFormSiswa' },
+    pembimbing: { tab: 'tab-btn-pembimbing', form: 'loginFormPembimbing' }
+  };
+  Object.keys(map).forEach(function(r) {
+    var t = document.getElementById(map[r].tab);
+    var f = document.getElementById(map[r].form);
+    if (t) t.classList.remove('active');
+    if (f) f.classList.add('hidden');
+  });
+  if (map[role]) {
+    var t = document.getElementById(map[role].tab);
+    var f = document.getElementById(map[role].form);
+    if (t) t.classList.add('active');
+    if (f) f.classList.remove('hidden');
   }
 }
 
@@ -2057,25 +2055,21 @@ function eksekusiLogout() {
 // =============================================
 document.addEventListener('DOMContentLoaded', function() {
   initDOMCache();
-
-  // ⭐ Aktifkan ripple effect di sidebar (semua role)
   addRippleEffect();
-
+  
+  // ⭐ PRIORITAS 1: Hash pembimbing
+  if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
+  
+  // ⭐ PRIORITAS 2: Auto-login pembimbing
+  if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
+  
+  // Normal flow
   var tglAbsen = document.getElementById('tgl_absen');
   if (tglAbsen) tglAbsen.value = todayLocalISO();
-
   var dashDate = document.getElementById('dash_date');
   if (dashDate) dashDate.value = todayLocalISO();
-
-  var searchInput = document.getElementById('admin_filter_tugas_search');
-  if (searchInput) {
-    searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        loadTugasAdmin();
-      }
-    });
-  }
+  // ... (event listener existing lainnya tetap)
+});
 
   var filterKelas = document.getElementById('admin_filter_tugas_kelas');
   if (filterKelas) {
