@@ -487,3 +487,33 @@ function resetFormPKL() {
   // Reset dropdown siswa ke semua
   populateDropdownSiswa(siswaXIICache);
 }
+// ⭐ Render tabel daftar siswa PKL
+function renderPKLTable() {
+  var tbody = document.getElementById('tbodyPKL');
+  if (!tbody) return;
+
+  if (pklCache.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Belum ada siswa PKL.</td></tr>';
+    return;
+  }
+
+  var htmlBuffer = pklCache.map(function(p) {
+    var periode = (p.Tanggal_Mulai || '-') + ' s/d ' + (p.Tanggal_Selesai || '-');
+    var statusBadge = p.Status === 'Aktif'
+      ? '<span class="badge-status-table badge-hadir">Aktif</span>'
+      : '<span class="badge-status-table badge-alpa">Selesai</span>';
+    return '<tr>' +
+      '<td>' + escapeHtml(p.NIS) + '</td>' +
+      '<td style="text-align:left;"><strong>' + escapeHtml(p.Nama_Siswa) + '</strong></td>' +
+      '<td>' + escapeHtml(p.Nama_Kelas) + '</td>' +
+      '<td style="text-align:left;">' + escapeHtml(p.Nama_DUDI) + '</td>' +
+      '<td style="font-size:11px;">' + periode + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' +
+        '<button class="btn btn-outline btn-sm" onclick="editPKL(\'' + p.NIS + '\')"><i class="fas fa-edit"></i></button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="hapusPKL(\'' + p.NIS + '\')"><i class="fas fa-trash"></i></button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = htmlBuffer.join('');
+}
