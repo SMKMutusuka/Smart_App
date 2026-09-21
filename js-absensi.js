@@ -1643,3 +1643,146 @@ function exportLaporanGTKPDF() {
       .generateLaporanGTKPDF(nbm, bulan, tahun);
   });
 }
+
+// =============================================
+// PRESENSI GTK — Smart Selfie (HP: kamera native, PC: webcam live)
+// =============================================
+function openGTKSelfie() {
+  // Kalau mobile → pakai kamera native HP
+  if (!isDesktopDevice()) {
+    var input = document.getElementById('gtk_input_selfie');
+    if (input) input.click();
+    return;
+  }
+
+  // Kalau PC → buka webcam live
+  var gtkPreview = document.getElementById('gtk-preview-selfie');
+  if (!gtkPreview) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Elemen preview tidak ada.' });
+    return;
+  }
+
+  // Buat container webcam kalau belum ada
+  var existingWebcam = document.getElementById('gtk-selfie-webcam-container');
+  if (!existingWebcam) {
+    var container = document.createElement('div');
+    container.id = 'gtk-selfie-webcam-container';
+    container.style.marginTop = '10px';
+    container.style.textAlign = 'center';
+    gtkPreview.parentNode.insertBefore(container, gtkPreview);
+    existingWebcam = container;
+  }
+
+  existingWebcam.style.display = 'block';
+  existingWebcam.innerHTML =
+    '<div style="text-align:center;padding:20px;">' +
+      '<i class="fas fa-spinner fa-spin" style="font-size:2em;color:var(--primary);"></i>' +
+      '<p style="margin-top:10px;color:#64748b;font-weight:600;">Membuka kamera...</p>' +
+      '<p style="font-size:11px;color:#94a3b8;">Klik "Allow" jika browser minta izin</p>' +
+    '</div>';
+
+  if (selfieWebcamStream) {
+    // Stream lama masih ada, stop dulu
+    closeWebcam();
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    Swal.fire({ icon: 'error', title: 'Browser Tidak Support', text: 'Update Chrome ke versi terbaru.' });
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false
+  })
+  .then(function(stream) {
+    selfieWebcamStream = stream;
+
+    existingWebcam.innerHTML =
+      '<video id="gtk-selfie-video" autoplay playsinline muted ' +
+        'style="width:100%;max-width:400px;border-radius:12px;background:#000;transform:scaleX(-1);">' +
+      '</video>' +
+      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">' +
+        '<button type="button" class="btn btn-primary btn-sm" onclick="captureGTKSelfie()">' +
+          '<i class="fas fa-camera"></i> Ambil Foto' +
+        '</button>' +
+        '<button type="button" class="btn btn-outline btn-sm" onclick="cancelGTKSelfie()">' +
+          '<i class="fas fa-times"></i> Batal' +
+        '</button>' +
+      '</div>';
+
+    var video = document.getElementById('gtk-selfie-video');
+    if (video) {
+      video.srcObject = stream;
+      video.onloadedmetadata = function() { video.play(); };
+    }
+  })
+  .catch(function(err) {
+    console.error('[GTK Webcam] Error:', err);
+    var pesan = 'Gagal akses kamera: ' + (err.message || err.name);
+    if (err.name === 'NotAllowedError') pesan = 'Klik ikon 🔒 di address bar → Allow kamera → refresh.';
+    else if (err.name === 'NotReadableError') pesan = 'Kamera dipakai aplikasi lain (Zoom/Meet). Tutup dulu.';
+    else if (err.name === 'NotFoundError') pesan = 'Webcam tidak terdeteksi. Cek kabel USB.';
+
+    existingWebcam.innerHTML =
+      '<div style="padding:16px;text-align:center;background:#fef2f2;border-radius:12px;border:1px solid #fecaca;">' +
+        '<i class="fas fa-video-slash" style="font-size:2em;color:#dc2626;margin-bottom:8px;"></i>' +
+        '<div style="font-size:12.5px;color:#991b1b;font-weight:600;">' + pesan + '</div>' +
+        '<button type="button" class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="cancelGTKSelfie()">Tutup</button>' +
+      '</div>';
+  });
+}
+
+function captureGTKSelfie() {
+  var video = document.getElementById('gtk-selfie-video');
+  if (!video || !video.videoWidth) {
+    Swal.fire({ icon: 'warning', title: 'Kamera Belum Siap', text: 'Tunggu 1-2 detik lagi.' });
+    return;
+  }
+
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+
+  // Kompres
+  var maxDim = 320;
+  var w = canvas.width, h = canvas.height;
+  if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+  else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+  if (w !== canvas.width) {
+    var tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').drawImage(canvas, 0, 0, w, h);
+    canvas = tmp;
+  }
+  var base64 = canvas.toDataURL('image/jpeg', 0.5);
+  var q = 0.5;
+  while (base64.length > 30000 && q > 0.15) {
+    q -= 0.05;
+    base64 = canvas.toDataURL('image/jpeg', q);
+  }
+
+  console.log('[GTK Selfie] Size:', base64.length);
+
+  document.getElementById('gtk_selfie_base64').value = base64;
+  var preview = document.getElementById('gtk-preview-selfie');
+  if (preview) { preview.src = base64; preview.style.display = 'block'; }
+  var statusEl = document.getElementById('gtk_selfie_status');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary-dark);font-weight:700;">✅ Foto Selfie tersimpan</span>';
+
+  closeWebcam();
+  var webcamCont = document.getElementById('gtk-selfie-webcam-container');
+  if (webcamCont) webcamCont.style.display = 'none';
+
+  Swal.fire({ icon: 'success', title: 'Foto Diambil!', timer: 1200, showConfirmButton: false, toast: true, position: 'top-end' });
+}
+
+function cancelGTKSelfie() {
+  closeWebcam();
+  var webcamCont = document.getElementById('gtk-selfie-webcam-container');
+  if (webcamCont) { webcamCont.style.display = 'none'; webcamCont.innerHTML = ''; }
+}
