@@ -1644,18 +1644,20 @@ function exportLaporanGTKPDF() {
   });
 }
 
-// =============================================
-// PRESENSI GTK — Smart Selfie (HP: kamera native, PC: webcam live)
-// =============================================
 function openGTKSelfie() {
-  // Kalau mobile → pakai kamera native HP
-  if (!isDesktopDevice()) {
-    var input = document.getElementById('gtk_input_selfie');
-    if (input) input.click();
+  // Prioritas 1: Coba webcam live (getUserMedia)
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    openGTKSelfieWebcam();
     return;
   }
 
-  // Kalau PC → buka webcam live
+  // Prioritas 2: Fallback ke input file (browser kuno)
+  var input = document.getElementById('gtk_input_selfie');
+  if (input) input.click();
+}
+
+// ⭐ Fungsi terpisah — khusus webcam live
+function openGTKSelfieWebcam() {
   var gtkPreview = document.getElementById('gtk-preview-selfie');
   if (!gtkPreview) {
     Swal.fire({ icon: 'error', title: 'Error', text: 'Elemen preview tidak ada.' });
@@ -1681,15 +1683,7 @@ function openGTKSelfie() {
       '<p style="font-size:11px;color:#94a3b8;">Klik "Allow" jika browser minta izin</p>' +
     '</div>';
 
-  if (selfieWebcamStream) {
-    // Stream lama masih ada, stop dulu
-    closeWebcam();
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    Swal.fire({ icon: 'error', title: 'Browser Tidak Support', text: 'Update Chrome ke versi terbaru.' });
-    return;
-  }
+  if (selfieWebcamStream) closeWebcam();
 
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -1719,17 +1713,28 @@ function openGTKSelfie() {
   })
   .catch(function(err) {
     console.error('[GTK Webcam] Error:', err);
+    
+    // ⭐ Tawarkan fallback ke input file
     var pesan = 'Gagal akses kamera: ' + (err.message || err.name);
-    if (err.name === 'NotAllowedError') pesan = 'Klik ikon 🔒 di address bar → Allow kamera → refresh.';
-    else if (err.name === 'NotReadableError') pesan = 'Kamera dipakai aplikasi lain (Zoom/Meet). Tutup dulu.';
-    else if (err.name === 'NotFoundError') pesan = 'Webcam tidak terdeteksi. Cek kabel USB.';
+    if (err.name === 'NotAllowedError') pesan = 'Izin kamera ditolak.';
+    else if (err.name === 'NotReadableError') pesan = 'Kamera sedang dipakai aplikasi lain (Zoom/Meet).';
+    else if (err.name === 'NotFoundError') pesan = 'Kamera tidak terdeteksi.';
 
-    existingWebcam.innerHTML =
-      '<div style="padding:16px;text-align:center;background:#fef2f2;border-radius:12px;border:1px solid #fecaca;">' +
-        '<i class="fas fa-video-slash" style="font-size:2em;color:#dc2626;margin-bottom:8px;"></i>' +
-        '<div style="font-size:12.5px;color:#991b1b;font-weight:600;">' + pesan + '</div>' +
-        '<button type="button" class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="cancelGTKSelfie()">Tutup</button>' +
-      '</div>';
+    Swal.fire({
+      icon: 'warning',
+      title: 'Kamera Tidak Bisa Diakses',
+      html: pesan + '<br><br>Ingin pilih foto dari file?',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-folder-open"></i> Pilih File',
+      cancelButtonText: 'Tutup',
+      confirmButtonColor: '#10b981'
+    }).then(function(r) {
+      if (r.isConfirmed) {
+        var input = document.getElementById('gtk_input_selfie');
+        if (input) input.click();
+      }
+      cancelGTKSelfie();
+    });
   });
 }
 
