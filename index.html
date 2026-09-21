@@ -44,59 +44,92 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
 (function() {
   if (window.google && window.google.script && window.google.script.run && window.google.script.run._real) return;
 
-  // ⭐ DAFTAR FUNGSI BACKEND
   var backendFunctions = [
-    'doLogin', 'doGtkLogin', 'doStudentLogin',
-    'getDashboardAdmin', 'getDashboardGTK',
-    'getKelas', 'getSiswa', 'saveKelas', 'saveSiswa', 'deleteKelas', 'deleteSiswa',
-    'getSiswaByKelas', 'cekAbsensi', 'submitAbsensi', 'submitAbsenWithGPS',
-    'getLaporanRekap', 'getStudentData',
-    'getWhatsappSiswa', 'updateWhatsappSiswa', 'getAllWhatsappSiswa',
-    'getWhatsappGTK', 'updateWhatsappGTK',
-    'gantiPasswordSiswa', 'gantiPasswordAdmin', 'gantiUsernameAdmin', 'gantiPasswordGTK',
-    'getLokasiSekolah', 'saveLokasiSekolah', 'geocodeAddress', 'reverseGeocode',
-    'getPendingApprovals', 'getApprovalStats', 'approveAbsensi', 'rejectAbsensi',
+    'doLogin','doGtkLogin','doStudentLogin',
+    'getDashboardAdmin','getDashboardGTK',
+    'getKelas','getSiswa','saveKelas','saveSiswa','deleteKelas','deleteSiswa',
+    'getSiswaByKelas','cekAbsensi','submitAbsensi','submitAbsenWithGPS',
+    'getLaporanRekap','getStudentData',
+    'getWhatsappSiswa','updateWhatsappSiswa','getAllWhatsappSiswa',
+    'getWhatsappGTK','updateWhatsappGTK',
+    'gantiPasswordSiswa','gantiPasswordAdmin','gantiUsernameAdmin','gantiPasswordGTK',
+    'getLokasiSekolah','saveLokasiSekolah','geocodeAddress','reverseGeocode',
+    'getPendingApprovals','getApprovalStats','approveAbsensi','rejectAbsensi',
     'submitAbsensiGTK',
-    'getDirectTugasSiswa', 'submitDirectTugasSiswa',
-    'getSemuaTugasAdmin', 'simpanNilaiDirectTugas', 'hapusDirectTugas',
-    'getKelasForFilter', 'getSiswaTidakHadir',
-    'aiGuruGenerate', 'generateLaporanGTKPDF',
-    'getAllDUDI', 'saveDUDI', 'deleteDUDI', 'generateKodeAksesDUDI',
-    'getSiswaXII', 'getAllPKL', 'savePKL', 'deletePKL', 'getPKLByNIS', 'getPKLByDUDI',
-    'cekAbsenPKLHariIni', 'submitAbsenPKL', 'getRiwayatAbsenPKL',
-    'cekJurnalPKLHariIni', 'submitJurnalPKL', 'getRiwayatJurnalPKL',
+    'getDirectTugasSiswa','submitDirectTugasSiswa',
+    'getSemuaTugasAdmin','simpanNilaiDirectTugas','hapusDirectTugas',
+    'getKelasForFilter','getSiswaTidakHadir',
+    'aiGuruGenerate','generateLaporanGTKPDF',
+    'getAllDUDI','saveDUDI','deleteDUDI','generateKodeAksesDUDI',
+    'getSiswaXII','getAllPKL','savePKL','deletePKL','getPKLByNIS','getPKLByDUDI',
+    'cekAbsenPKLHariIni','submitAbsenPKL','getRiwayatAbsenPKL',
+    'cekJurnalPKLHariIni','submitJurnalPKL','getRiwayatJurnalPKL'
   ];
 
-  // ⭐ Fungsi fetch backend
+  var FETCH_TIMEOUT_MS = 25000; // 25 detik — cukup untuk Apps Script cold start
+
   function callBackend(fnName, args, onSuccess, onFailure) {
     console.log('[API] Call:', fnName, args);
-    fetch(BACKEND_URL, {
+
+    // ⭐ Timeout guard
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timedOut = false;
+    var timer = setTimeout(function() {
+      timedOut = true;
+      if (controller) { try { controller.abort(); } catch(e){} }
+      var err = new Error('Timeout ' + (FETCH_TIMEOUT_MS/1000) + 's. Backend tidak merespons. Cek koneksi / deployment Apps Script.');
+      console.error('[API Timeout]', fnName);
+      if (onFailure) onFailure(err);
+    }, FETCH_TIMEOUT_MS);
+
+    var fetchOpts = {
       method: 'POST',
       body: JSON.stringify({ fn: fnName, args: args })
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.text();
-    })
-    .then(function(text) {
-      if (text.trim().charAt(0) === '<') throw new Error('Backend HTML, bukan JSON');
-      var parsed;
-      try { parsed = JSON.parse(text); } catch (e) { throw new Error('Response bukan JSON'); }
-      if (parsed.success) {
-        if (onSuccess) onSuccess(parsed.data);
-      } else {
-        var err = new Error(parsed.error || 'Unknown');
+      // ⚠️ JANGAN set Content-Type → biar browser pakai text/plain (no preflight)
+    };
+    if (controller) fetchOpts.signal = controller.signal;
+
+    fetch(BACKEND_URL, fetchOpts)
+      .then(function(res) {
+        if (timedOut) return null;
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function(text) {
+        if (timedOut || text === null) return;
+        clearTimeout(timer);
+
+        if (text.trim().charAt(0) === '<') {
+          throw new Error('Backend balikin HTML, bukan JSON. Cek deployment Apps Script (harus "Anyone").');
+        }
+        var parsed;
+        try { parsed = JSON.parse(text); }
+        catch (e) { throw new Error('Response bukan JSON valid: ' + text.slice(0, 120)); }
+
+        // ⭐ Panggil callback DI LUAR promise chain supaya throw-nya tidak ikut ke-catch
+        setTimeout(function() {
+          try {
+            if (parsed.success) {
+              if (onSuccess) onSuccess(parsed.data);
+            } else {
+              var err = new Error(parsed.error || 'Backend error tanpa pesan');
+              if (onFailure) onFailure(err);
+              else console.error('[API Error]', parsed.error);
+            }
+          } catch (cbErr) {
+            console.error('[API Callback Error]', cbErr);
+            if (onFailure) onFailure(cbErr);
+          }
+        }, 0);
+      })
+      .catch(function(err) {
+        clearTimeout(timer);
+        if (timedOut) return; // sudah di-handle timer
+        console.error('[API Fetch Error]', err);
         if (onFailure) onFailure(err);
-        else console.error('[API Error]', parsed.error);
-      }
-    })
-    .catch(function(err) {
-      console.error('[API Fetch Error]', err);
-      if (onFailure) onFailure(err);
-    });
+      });
   }
 
-  // ⭐ Buat chain baru setiap kali — fix bug paralel request
   function makeRunner() {
     function createChain() {
       var state = { onSuccess: null, onFailure: null };
@@ -112,7 +145,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
           return chain;
         };
       });
-
       return chain;
     }
 
@@ -127,7 +159,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
   window.google.script.run = makeRunner();
   window.google.script.run._real = true;
 
-  console.log('[Adapter] ✅ google.script.run siap');
+  console.log('[Adapter] ✅ google.script.run siap (timeout ' + (FETCH_TIMEOUT_MS/1000) + 's)');
 })();
 </script>
 </head>
