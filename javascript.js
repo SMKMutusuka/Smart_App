@@ -471,12 +471,11 @@ function toggleSidebar() {
 // =============================================
 function switchLoginTab(role) {
   var map = {
-    admin:      { tab: 'tab-btn-admin',      form: 'loginFormAdmin' },
-    gtk:        { tab: 'tab-btn-gtk',        form: 'loginFormGtk' },
-    siswa:      { tab: 'tab-btn-siswa',      form: 'loginFormSiswa' },
-    pembimbing: { tab: 'tab-btn-pembimbing', form: 'loginFormPembimbing' }
+    admin: { tab: 'tab-btn-admin', form: 'loginFormAdmin' },
+    gtk:   { tab: 'tab-btn-gtk',   form: 'loginFormGtk' },
+    siswa: { tab: 'tab-btn-siswa', form: 'loginFormSiswa' }
   };
-  Object.keys(map).forEach(function(r) {
+    Object.keys(map).forEach(function(r) {
     var t = document.getElementById(map[r].tab);
     var f = document.getElementById(map[r].form);
     if (t) t.classList.remove('active');
