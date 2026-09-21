@@ -191,17 +191,21 @@ function kirimLinkPembimbingWA(idDudi) {
     return;
   }
 
-  var link = location.origin + location.pathname + '#pembimbing=' + encodeURIComponent(d.Kode_Akses);
-  var pesan = 
-    "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
-    "Berikut link untuk monitoring PKL siswa di *" + d.Nama_DUDI + "*:\n\n" +
-    "🔗 " + link + "\n\n" +
-    "Melalui link ini Bapak/Ibu dapat:\n" +
-    "• Melihat daftar siswa PKL di DUDI\n" +
-    "• Approve absensi harian siswa\n" +
-    "• Approve jurnal kegiatan siswa\n\n" +
-    "Simpan link ini ya. Terima kasih.\n" +
-    "- SMK Muhammadiyah 1 Surakarta";
+  var pesan =
+  "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
+  "Anda ditunjuk sebagai Pembimbing PKL siswa SMK Muhammadiyah 1 Surakarta di:\n" +
+  "🏢 *" + d.Nama_DUDI + "*\n\n" +
+  "Untuk mengakses Dashboard Pembimbing, gunakan informasi berikut:\n\n" +
+  "🔗 *Link Dashboard:*\n" + link + "\n\n" +
+  "🔑 *Kode Akses:* " + d.Kode_Akses + "\n" +
+  "🔒 *PIN:* " + d.PIN_Pembimbing + "\n\n" +
+  "Melalui dashboard ini Bapak/Ibu dapat:\n" +
+  "• Melihat daftar siswa PKL di DUDI\n" +
+  "• Menyetujui (approve) absensi harian siswa\n" +
+  "• Menyetujui (approve) jurnal kegiatan siswa\n\n" +
+  "⚠️ *Penting:* Jangan bagikan Kode Akses & PIN kepada siapa pun.\n\n" +
+  "Simpan pesan ini. Terima kasih.\n" +
+  "- SMK Muhammadiyah 1 Surakarta";
 
   var nomor = formatWaNumber(d.WA_Pembimbing);
   if (!nomor) {
