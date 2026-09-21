@@ -31,7 +31,8 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
-
+  <script src="js-pembimbing.js"></script>
+  <script src="js-approval-pkl-guru.js"></script>
   <!-- LEAFLET untuk peta -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -187,6 +188,9 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       <button type="button" class="login-tab-btn" id="tab-btn-siswa" onclick="switchLoginTab('siswa')">
         <i class="fas fa-user-graduate"></i> Siswa
       </button>
+      <button type="button" class="login-tab-btn" id="tab-btn-pembimbing" onclick="switchLoginTab('pembimbing')">
+        <i class="fas fa-industry"></i> DUDI
+      </button>
     </div>
 
     <form id="loginFormAdmin" onsubmit="handleLoginAdmin(event)" autocomplete="off">
@@ -229,7 +233,25 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;font-size:14px;">
         <i class="fas fa-user-check"></i> Masuk Siswa
       </button>
-    </form>
+      <form id="loginFormPembimbing" onsubmit="handleLoginPembimbing(event)" autocomplete="off" class="hidden">
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;text-align:center;">
+    <i class="fas fa-info-circle"></i> Untuk pembimbing industri / DUDI
+  </div>
+  <div class="form-group" style="text-align: left;">
+    <label for="pemb_kode"><i class="fas fa-key"></i> Kode Akses DUDI</label>
+    <input type="text" id="pemb_kode" class="form-control" required placeholder="Contoh: ABC123" style="text-transform: uppercase; letter-spacing: 2px; font-weight: 700;" maxlength="10">
+  </div>
+  <div class="form-group" style="text-align: left;">
+    <label for="pemb_pin"><i class="fas fa-lock"></i> PIN</label>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" id="pemb_pin" class="form-control" required placeholder="6 digit angka" maxlength="6">
+  </div>
+  <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;font-size:14px;">
+    <i class="fas fa-sign-in-alt"></i> Masuk Dashboard
+  </button>
+  <div style="margin-top:12px;font-size:11px;color:var(--text-muted);text-align:center;">
+    Lupa PIN? Hubungi admin sekolah.
+  </div>
+  </form>
   </div>
   <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
 </div>
@@ -283,6 +305,11 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
           <i class="fas fa-magic"></i> AI Assistant Guru
         </a>
       </li>
+      <li>
+  <a href="#" onclick="showPage('page-approval-jurnal-pkl', this); return false;" data-page="approval-jurnal-pkl">
+    <i class="fas fa-clipboard-check"></i> Approval Jurnal PKL
+  </a>
+</li>
       <li><a href="#" onclick="showPage('page-whatsapp-gtk', this); return false;" data-page="whatsapp-gtk"><i class="fab fa-whatsapp"></i> Data WhatsApp</a></li>
       <li><a href="#" onclick="showPage('page-pengaturan-gtk', this); return false;" data-page="pengaturan-gtk"><i class="fas fa-cog"></i> Pengaturan Akun</a></li>
       <li style="margin-top: auto;"><a href="#" onclick="logout(); return false;" style="color:#ef4444;"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
@@ -300,7 +327,26 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
       <li style="margin-top: auto;"><a href="#" onclick="logout(); return false;" style="color:#ef4444;"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
     </ul>
   </nav>
+<!-- PEMBIMBING INDUSTRI -->
+<section id="page-pembimbing" class="page hidden" style="padding:16px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <h1 class="page-title" style="margin:0;"><i class="fas fa-industry" style="color:var(--primary);"></i> Dashboard Pembimbing</h1>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Monitoring absensi & jurnal siswa PKL</div>
+    </div>
+  </div>
+  <div id="pembimbing-content">
+    <div style="text-align:center;padding:32px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:2em;color:var(--primary);"></i>
+    </div>
+  </div>
+</section>
 
+<!-- APPROVAL JURNAL PKL (GURU) -->
+<section id="page-approval-jurnal-pkl" class="page hidden">
+  <h1 class="page-title"><i class="fas fa-clipboard-check" style="color:var(--primary);"></i> Approval Jurnal PKL Siswa Binaan</h1>
+  <div id="guru-jurnal-content"></div>
+</section>
   <main class="main-content">
 
     <!-- DASHBOARD ADMIN -->
