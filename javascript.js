@@ -1,6 +1,6 @@
 // =============================================
 // JAVASCRIPT UTAMA — Login, Navigasi, Dashboard
-// File: JavaScript.html
+// File: javascript.js
 // =============================================
 
 // ===== GLOBAL STATE =====
@@ -131,11 +131,9 @@ function openWhatsApp(phoneNumber) {
 }
 
 // =============================================
-// ⭐ RIPPLE EFFECT — Pendar putih saat sidebar diklik
-// Berlaku untuk semua sidebar (Admin, GTK, Siswa)
+// RIPPLE EFFECT
 // =============================================
 function addRippleEffect() {
-  // Hapus listener lama biar tidak dobel (jika fungsi dipanggil ulang)
   if (window._rippleInitialized) return;
   window._rippleInitialized = true;
 
@@ -143,11 +141,9 @@ function addRippleEffect() {
     var link = e.target.closest('.sidebar-menu li a');
     if (!link) return;
 
-    // Buat elemen ripple
     var ripple = document.createElement('span');
     ripple.className = 'ripple';
 
-    // Hitung ukuran & posisi ripple
     var rect = link.getBoundingClientRect();
     var size = Math.max(rect.width, rect.height);
     var x = e.clientX - rect.left - size / 2;
@@ -159,7 +155,6 @@ function addRippleEffect() {
 
     link.appendChild(ripple);
 
-    // Hapus setelah animasi selesai
     setTimeout(function() {
       if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
     }, 600);
@@ -232,7 +227,7 @@ function getAccuratePosition() {
 }
 
 // =============================================
-// WA — Notifikasi Ketiadaan ke Wali/Siswa
+// WA — Notifikasi Ketiadaan
 // =============================================
 function buildWaMessage(namaSiswa, namaKelas, tanggal, status, keterangan, namaSekolah) {
   var sekolah = namaSekolah || 'SMK Muhammadiyah 1 Surakarta';
@@ -572,10 +567,11 @@ function handleLoginSiswa(e) {
         Swal.fire({ icon: 'success', title: 'Berhasil Masuk', text: 'Selamat datang, ' + res.student.Nama_Siswa, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
-        // ⭐ Cek apakah siswa PKL aktif
-        checkPKLSiswaAktif(String(res.student.NIS).trim(), function(pklInfo) {
-          console.log('[Login] PKL aktif:', !!pklInfo);
-        });
+        if (typeof checkPKLSiswaAktif === 'function') {
+          checkPKLSiswaAktif(String(res.student.NIS).trim(), function(pklInfo) {
+            console.log('[Login] PKL aktif:', !!pklInfo);
+          });
+        }
         initSiswa();
       }
     })
@@ -604,7 +600,6 @@ function setupRoleUI(role) {
   } else if (role === 'Guru' || role === 'Tendik') {
     mGtk.classList.remove('hidden');
     roleTitle.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Panel GTK';
-  if (pageId === 'page-approval-jurnal-pkl') loadApprovalJurnalGuru();
 
     var menuGuruTugas = document.getElementById('menu-item-guru-tugas');
     var menuAIGuru = document.getElementById('menu-item-ai-guru');
@@ -623,7 +618,6 @@ function setupRoleUI(role) {
     showPage('page-dashboard-siswa', document.querySelector('[data-page="dashboard-siswa"]'));
   }
 
-  // ⭐ Pastikan ripple effect aktif (untuk semua role)
   addRippleEffect();
 }
 
@@ -671,8 +665,12 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-whatsapp-admin') loadWhatsappAdmin();
   if (pageId === 'page-whatsapp-gtk') loadWhatsappGTK();
   if (pageId === 'page-pengaturan-gtk') showPengaturanGTK();
+  if (pageId === 'page-ai-guru' && typeof initAIGuruPage === 'function') initAIGuruPage();
 
-  if (pageId === 'page-ai-guru') initAIGuruPage();
+  // ⭐ Approval Jurnal PKL (guru pembimbing sekolah)
+  if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') {
+    loadApprovalJurnalGuru();
+  }
 }
 
 function initAdmin() {
@@ -2014,8 +2012,7 @@ function logout() {
 
 function eksekusiLogout() {
   if (typeof closeWebcam === 'function') closeWebcam();
-  
-  // ⭐ Reset state PKL
+
   if (typeof pklInfoSiswa !== 'undefined') pklInfoSiswa = null;
   if (typeof absenPKLHariIni !== 'undefined') absenPKLHariIni = null;
   if (typeof jurnalPKLHariIni !== 'undefined') jurnalPKLHariIni = null;
@@ -2023,7 +2020,7 @@ function eksekusiLogout() {
   var menuJ = document.getElementById('menu-pkl-jurnal');
   if (menuP) menuP.classList.add('hidden');
   if (menuJ) menuJ.classList.add('hidden');
-  
+
   currentUser = null;
 
   var sidebar = document.getElementById('sidebar');
@@ -2037,7 +2034,7 @@ function eksekusiLogout() {
   if (appLayout) appLayout.classList.add('hidden');
   if (loginPage) loginPage.classList.remove('hidden');
 
-  ['username', 'password', 'nbm_login', 'password_gtk', 'nis_login', 'password_siswa'].forEach(function(id) {
+  ['username', 'password', 'nbm_login', 'password_gtk', 'nis_login', 'password_siswa', 'pemb_kode', 'pemb_pin'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2057,26 +2054,37 @@ function eksekusiLogout() {
 document.addEventListener('DOMContentLoaded', function() {
   initDOMCache();
   addRippleEffect();
-  
-  // ⭐ PRIORITAS 1: Hash pembimbing
+
+  // ⭐ PRIORITAS 1: Hash pembimbing di URL (#pembimbing=KODE)
   if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
-  
-  // ⭐ PRIORITAS 2: Auto-login pembimbing
+
+  // ⭐ PRIORITAS 2: Auto-login pembimbing dari localStorage
   if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
-  
-  // Normal flow
+
+  // ===== Set default tanggal =====
   var tglAbsen = document.getElementById('tgl_absen');
   if (tglAbsen) tglAbsen.value = todayLocalISO();
+
   var dashDate = document.getElementById('dash_date');
   if (dashDate) dashDate.value = todayLocalISO();
-  // ... (event listener existing lainnya tetap)
-});
+
+  // ===== Event listener: pencarian tugas admin =====
+  var searchInput = document.getElementById('admin_filter_tugas_search');
+  if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadTugasAdmin();
+      }
+    });
+  }
 
   var filterKelas = document.getElementById('admin_filter_tugas_kelas');
   if (filterKelas) {
     filterKelas.addEventListener('change', function() { loadTugasAdmin(); });
   }
 
+  // ===== Event listener: pencarian WhatsApp admin =====
   var waSearchInput = document.getElementById('admin_wa_filter_search');
   if (waSearchInput) {
     waSearchInput.addEventListener('keypress', function(e) {
@@ -2092,11 +2100,14 @@ document.addEventListener('DOMContentLoaded', function() {
     waFilterKelas.addEventListener('change', function() { loadWhatsappAdmin(); });
   }
 
+  // ===== Event listener: pencarian alamat peta =====
   var mapSearchInput = document.getElementById('map_search_input');
   if (mapSearchInput) {
     mapSearchInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         searchLocation();
+      }
+    });
   }
 });
