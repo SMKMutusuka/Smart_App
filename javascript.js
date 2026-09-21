@@ -970,7 +970,7 @@ function loadStudentDashboard() {
               '<i class="fas fa-user-check"></i> Absen Sekarang' +
             '</button>';
         }
-      }
+      } 
 
       paginationState.studentHistory.data = studentAbsens;
       paginationState.studentHistory.page = 1;
