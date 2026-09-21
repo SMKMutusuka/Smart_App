@@ -964,9 +964,12 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
       '<div class="card">' +
         '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-pen" style="color:var(--primary);"></i> Tulis Jurnal Hari Ini</div>' +
         '<div class="form-group">' +
-          '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini (Deskripsikan minimal 10 kata)</label>' +
-          '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli dan tune up mesin..."></textarea>' +
-        '</div>' +
+  '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini — Deskripsikan minimal 10 kata</label>' +
+  '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli mesin, membersihkan karburator, dan melakukan tune up ringan bersama pembimbing."></textarea>' +
+  '<div id="pkl_jurnal_word_count" style="font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;">' +
+    '0 kata — minimal 10 kata' +
+  '</div>' +
+'</div>' +
         '<div class="form-group">' +
           '<label><i class="fas fa-camera"></i> Foto Dokumentasi (opsional)</label>' +
           '<button type="button" class="btn btn-outline btn-sm" onclick="openPKLJurnalFileDialog()" style="width:100%;">' +
@@ -989,7 +992,24 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
     '</div>';
   
   container.innerHTML = infoCard + formCard + riwayatCard;
-  
+  // ⭐ Live word counter untuk jurnal
+var textareaJurnal = document.getElementById('pkl_jurnal_kegiatan');
+var counterJurnal = document.getElementById('pkl_jurnal_word_count');
+if (textareaJurnal && counterJurnal) {
+  textareaJurnal.addEventListener('input', function() {
+    var teks = this.value.trim();
+    var jml = teks ? teks.split(/\s+/).filter(function(k) { return k.length > 0; }).length : 0;
+    if (jml >= 10) {
+      counterJurnal.textContent = jml + ' kata — siap dikirim ✅';
+      counterJurnal.style.color = '#10b981';
+      counterJurnal.style.fontWeight = '700';
+    } else {
+      counterJurnal.textContent = jml + ' kata — minimal 10 kata';
+      counterJurnal.style.color = '#94a3b8';
+      counterJurnal.style.fontWeight = '400';
+    }
+  });
+}
   var nis = String(currentUser.student.NIS).trim();
   google.script.run
     .withSuccessHandler(function(list) { renderPKLJurnalRiwayat(list); })
@@ -1034,8 +1054,16 @@ function submitPKLJurnal() {
   var kegiatan = document.getElementById('pkl_jurnal_kegiatan').value.trim();
   var foto = document.getElementById('pkl_jurnal_foto_base64').value;
   
-  if (kegiatan.length < 10) {
-    Swal.fire({ icon: 'warning', title: 'Kegiatan Terlalu Pendek', text: 'Minimal 10 karakter.' });
+  // ⭐ Hitung jumlah kata (pisah pakai whitespace, buang yang kosong)
+  var jumlahKata = kegiatan.split(/\s+/).filter(function(k) { return k.length > 0; }).length;
+  
+  if (jumlahKata < 10) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Deskripsi Terlalu Pendek',
+      html: 'Jurnal minimal <strong>10 kata</strong>.<br>' +
+            'Saat ini baru <strong>' + jumlahKata + ' kata</strong>.'
+    });
     return;
   }
   
