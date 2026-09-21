@@ -230,7 +230,7 @@ console.log('[Selfie Webcam] Size:', base64.length);
     position: 'top-end'
   });
 }
-
+ 
 function closeWebcam() {
   if (selfieWebcamStream) {
     selfieWebcamStream.getTracks().forEach(function(t) { t.stop(); });
