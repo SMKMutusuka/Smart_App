@@ -63,6 +63,8 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
     'aiGuruGenerate', 'generateLaporanGTKPDF',
     'getAllDUDI', 'saveDUDI', 'deleteDUDI', 'generateKodeAksesDUDI',
     'getSiswaXII', 'getAllPKL', 'savePKL', 'deletePKL', 'getPKLByNIS', 'getPKLByDUDI'
+    'cekAbsenPKLHariIni', 'submitAbsenPKL', 'getRiwayatAbsenPKL',
+    'cekJurnalPKLHariIni', 'submitJurnalPKL', 'getRiwayatJurnalPKL',
   ];
 
   // ⭐ Fungsi fetch backend
@@ -258,6 +260,8 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
     <ul class="sidebar-menu hidden" id="menu-siswa">
       <li><a href="#" onclick="showPage('page-dashboard-siswa', this); return false;" class="active" data-page="dashboard-siswa"><i class="fas fa-home"></i> Beranda Siswa</a></li>
       <li><a href="#" onclick="showPage('page-absen-siswa', this); return false;" data-page="absen-siswa"><i class="fas fa-user-check"></i> Absen Hari Ini</a></li>
+      <li id="menu-pkl-presensi" class="hidden"><a href="#" onclick="showPage('page-pkl-presensi', this); return false;" data-page="pkl-presensi"><i class="fas fa-briefcase"></i> Presensi PKL</a></li>
+      <li id="menu-pkl-jurnal" class="hidden"><a href="#" onclick="showPage('page-pkl-jurnal', this); return false;" data-page="pkl-jurnal"><i class="fas fa-book"></i> Jurnal Harian PKL</a></li>
       <li><a href="#" onclick="showPage('page-tugas-siswa', this); return false;" data-page="tugas-siswa"><i class="fas fa-cloud-upload-alt"></i> Upload Tugas Saya</a></li>
       <li><a href="#" onclick="showPage('page-whatsapp-siswa', this); return false;" data-page="whatsapp-siswa"><i class="fab fa-whatsapp"></i> Data WhatsApp</a></li>
       <li><a href="#" onclick="showPage('page-pengaturan-siswa', this); return false;" data-page="pengaturan-siswa"><i class="fas fa-cog"></i> Pengaturan Akun</a></li>
@@ -860,7 +864,27 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbx_9d43uIHCKyhW4ssk8q
         </form>
       </div>
     </section>
+    <!-- PRESENSI PKL -->
+    <section id="page-pkl-presensi" class="page hidden">
+      <h1 class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Presensi PKL</h1>
+      <div id="pkl-presensi-content">
+        <div style="text-align:center;padding:32px;">
+          <i class="fas fa-spinner fa-spin" style="font-size:2em;color:var(--primary);"></i>
+          <p style="margin-top:12px;color:var(--text-muted);">Memuat data PKL...</p>
+        </div>
+      </div>
+    </section>
 
+    <!-- JURNAL PKL -->
+    <section id="page-pkl-jurnal" class="page hidden">
+      <h1 class="page-title"><i class="fas fa-book" style="color:var(--primary);"></i> Jurnal Harian PKL</h1>
+      <div id="pkl-jurnal-content">
+        <div style="text-align:center;padding:32px;">
+          <i class="fas fa-spinner fa-spin" style="font-size:2em;color:var(--primary);"></i>
+          <p style="margin-top:12px;color:var(--text-muted);">Memuat jurnal...</p>
+        </div>
+      </div>
+    </section>
     <!-- ABSEN SISWA -->
     <section id="page-absen-siswa" class="page hidden">
       <h1 class="page-title">Absensi Mandiri Siswa</h1>
