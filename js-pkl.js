@@ -209,12 +209,33 @@ function kirimLinkPembimbingWA(idDudi) {
     return;
   }
 
-  var url = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
+    var waMeUrl = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
+  var waProtocolUrl = 'whatsapp://send?phone=' + nomor + '&text=' + encodeURIComponent(pesan);
   var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   if (isMobile) {
-    window.open(url, '_blank');
+    window.open(waMeUrl, '_blank');
   } else {
+    // ⭐ PC: coba buka WA Desktop dulu via protocol handler
+    // Kalau WA Desktop tidak terinstall, fallback ke wa.me (web)
+    var fallbackTimer = setTimeout(function() {
+      // Kalau 1.5 detik tidak ada yang handle protocol → fallback ke wa.me
+      window.open(waMeUrl, '_blank');
+    }, 1500);
+
+    // Trigger protocol handler whatsapp://
+    var hiddenLink = document.createElement('a');
+    hiddenLink.href = waProtocolUrl;
+    hiddenLink.style.display = 'none';
+    document.body.appendChild(hiddenLink);
+    hiddenLink.click();
+    document.body.removeChild(hiddenLink);
+
+    // Kalau WA Desktop terbuka, browser akan blur → cancel fallback
+    window.addEventListener('blur', function onBlur() {
+      clearTimeout(fallbackTimer);
+      window.removeEventListener('blur', onBlur);
+    }, { once: true });
     Swal.fire({
       title: 'Kirim Link ke WA?',
       html: 'Link akan dikirim ke <strong>' + d.Nama_Pembimbing + '</strong><br>(' + d.WA_Pembimbing + ')',
