@@ -178,34 +178,45 @@ function copyLinkPembimbing(kode) {
     });
   }
 }
-// ⭐ Kirim link pembimbing via WhatsApp
 function kirimLinkPembimbingWA(idDudi) {
   var d = dudiCache.find(function(x) { return String(x.ID_DUDI) === String(idDudi); });
   if (!d) {
     Swal.fire({ icon: 'error', title: 'Error', text: 'Data DUDI tidak ditemukan.' });
     return;
   }
-  
+
   if (!d.WA_Pembimbing) {
     Swal.fire({ icon: 'warning', title: 'WA Kosong', text: 'Nomor WA pembimbing belum diisi. Edit DUDI dulu.' });
     return;
   }
 
+  if (!d.PIN_Pembimbing) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'PIN Belum Ada',
+      html: 'DUDI ini belum punya PIN.<br>Silakan <strong>Edit DUDI</strong> dan simpan ulang untuk auto-generate PIN.'
+    });
+    return;
+  }
+
+  // ⭐ Deklarasi link — WAJIB ADA
+  var link = location.origin + location.pathname + '#pembimbing=' + encodeURIComponent(d.Kode_Akses);
+
   var pesan =
-  "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
-  "Anda ditunjuk sebagai Pembimbing PKL siswa SMK Muhammadiyah 1 Surakarta di:\n" +
-  "🏢 *" + d.Nama_DUDI + "*\n\n" +
-  "Untuk mengakses Dashboard Pembimbing, gunakan informasi berikut:\n\n" +
-  "🔗 *Link Dashboard:*\n" + link + "\n\n" +
-  "🔑 *Kode Akses:* " + d.Kode_Akses + "\n" +
-  "🔒 *PIN:* " + d.PIN_Pembimbing + "\n\n" +
-  "Melalui dashboard ini Bapak/Ibu dapat:\n" +
-  "• Melihat daftar siswa PKL di DUDI\n" +
-  "• Menyetujui (approve) absensi harian siswa\n" +
-  "• Menyetujui (approve) jurnal kegiatan siswa\n\n" +
-  "⚠️ *Penting:* Jangan bagikan Kode Akses & PIN kepada siapa pun.\n\n" +
-  "Simpan pesan ini. Terima kasih.\n" +
-  "- SMK Muhammadiyah 1 Surakarta";
+    "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
+    "Anda ditunjuk sebagai Pembimbing PKL siswa SMK Muhammadiyah 1 Surakarta di:\n" +
+    "🏢 *" + d.Nama_DUDI + "*\n\n" +
+    "Untuk mengakses Dashboard Pembimbing, gunakan informasi berikut:\n\n" +
+    "🔗 *Link Dashboard:*\n" + link + "\n\n" +
+    "🔑 *Kode Akses:* " + d.Kode_Akses + "\n" +
+    "🔒 *PIN:* " + d.PIN_Pembimbing + "\n\n" +
+    "Melalui dashboard ini Bapak/Ibu dapat:\n" +
+    "• Melihat daftar siswa PKL di DUDI\n" +
+    "• Menyetujui (approve) absensi harian siswa\n" +
+    "• Menyetujui (approve) jurnal kegiatan siswa\n\n" +
+    "⚠️ *Penting:* Jangan bagikan Kode Akses & PIN kepada siapa pun.\n\n" +
+    "Simpan pesan ini. Terima kasih.\n" +
+    "- SMK Muhammadiyah 1 Surakarta";
 
   var nomor = formatWaNumber(d.WA_Pembimbing);
   if (!nomor) {
@@ -213,36 +224,15 @@ function kirimLinkPembimbingWA(idDudi) {
     return;
   }
 
-    var waMeUrl = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
-  var waProtocolUrl = 'whatsapp://send?phone=' + nomor + '&text=' + encodeURIComponent(pesan);
+  var waMeUrl = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
   var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   if (isMobile) {
     window.open(waMeUrl, '_blank');
   } else {
-    // ⭐ PC: coba buka WA Desktop dulu via protocol handler
-    // Kalau WA Desktop tidak terinstall, fallback ke wa.me (web)
-    var fallbackTimer = setTimeout(function() {
-      // Kalau 1.5 detik tidak ada yang handle protocol → fallback ke wa.me
-      window.open(waMeUrl, '_blank');
-    }, 1500);
-
-    // Trigger protocol handler whatsapp://
-    var hiddenLink = document.createElement('a');
-    hiddenLink.href = waProtocolUrl;
-    hiddenLink.style.display = 'none';
-    document.body.appendChild(hiddenLink);
-    hiddenLink.click();
-    document.body.removeChild(hiddenLink);
-
-    // Kalau WA Desktop terbuka, browser akan blur → cancel fallback
-    window.addEventListener('blur', function onBlur() {
-      clearTimeout(fallbackTimer);
-      window.removeEventListener('blur', onBlur);
-    }, { once: true });
     Swal.fire({
       title: 'Kirim Link ke WA?',
-      html: 'Link akan dikirim ke <strong>' + d.Nama_Pembimbing + '</strong><br>(' + d.WA_Pembimbing + ')',
+      html: 'Pesan akan dikirim ke <strong>' + d.Nama_Pembimbing + '</strong><br>(' + d.WA_Pembimbing + ')',
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
