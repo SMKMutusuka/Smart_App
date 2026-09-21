@@ -477,10 +477,13 @@ function hapusPKL(nis) {
 }
 
 function resetFormPKL() {
-  ['pkl_siswa', 'pkl_dudi', 'pkl_mulai', 'pkl_selesai'].forEach(function(id) {
+  ['pkl_siswa', 'pkl_dudi', 'pkl_mulai', 'pkl_selesai', 'pkl_filter_kelas'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('pkl_status').value = 'Aktif';
   document.getElementById('pkl_edit_mode').value = 'false';
+  
+  // Reset dropdown siswa ke semua
+  populateDropdownSiswa(siswaXIICache);
 }
