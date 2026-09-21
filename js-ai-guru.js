@@ -139,7 +139,7 @@ function autoFillGuruFields() {
   var fields = [
     { nama: 'pt_namaGuru', nip: 'pt_nipGuru' },
     { nama: 'ma_namaGuru', nip: 'ma_nipGuru' },
-    { nama: 'so_namaGuru', nip: null },
+    { nama: 'so_namaGuru', nip: 'so_nipGuru' },     // ⭐ TAMBAH NIP untuk form soal
     { nama: 'kk_namaGuru', nip: null }
   ];
 
