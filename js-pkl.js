@@ -41,9 +41,10 @@ function renderDUDITable() {
       '<td><span class="chart-badge" style="cursor:pointer;" onclick="copyKode(\'' + escapeHtml(d.Kode_Akses) + '\')">' + escapeHtml(d.Kode_Akses) + ' <i class="fas fa-copy"></i></span></td>' +
       '<td><button class="btn btn-outline btn-sm" onclick="copyLinkPembimbing(\'' + escapeHtml(d.Kode_Akses) + '\')"><i class="fas fa-link"></i> Copy Link</button></td>' +
       '<td>' +
-        '<button class="btn btn-outline btn-sm" onclick="editDUDI(\'' + d.ID_DUDI + '\')"><i class="fas fa-edit"></i></button> ' +
-        '<button class="btn btn-danger btn-sm" onclick="hapusDUDI(\'' + d.ID_DUDI + '\')"><i class="fas fa-trash"></i></button>' +
-      '</td>' +
+  (d.WA_Pembimbing ? '<button class="btn btn-wa btn-sm" onclick="kirimLinkPembimbingWA(\'' + d.ID_DUDI + '\')" title="Kirim Link via WA"><i class="fab fa-whatsapp"></i></button> ' : '') +
+  '<button class="btn btn-outline btn-sm" onclick="editDUDI(\'' + d.ID_DUDI + '\')"><i class="fas fa-edit"></i></button> ' +
+  '<button class="btn btn-danger btn-sm" onclick="hapusDUDI(\'' + d.ID_DUDI + '\')"><i class="fas fa-trash"></i></button>' +
+'</td>' +
     '</tr>';
   });
   tbody.innerHTML = htmlBuffer.join('');
@@ -177,7 +178,56 @@ function copyLinkPembimbing(kode) {
     });
   }
 }
+// ⭐ Kirim link pembimbing via WhatsApp
+function kirimLinkPembimbingWA(idDudi) {
+  var d = dudiCache.find(function(x) { return String(x.ID_DUDI) === String(idDudi); });
+  if (!d) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Data DUDI tidak ditemukan.' });
+    return;
+  }
+  
+  if (!d.WA_Pembimbing) {
+    Swal.fire({ icon: 'warning', title: 'WA Kosong', text: 'Nomor WA pembimbing belum diisi. Edit DUDI dulu.' });
+    return;
+  }
 
+  var link = location.origin + location.pathname + '#pembimbing=' + encodeURIComponent(d.Kode_Akses);
+  var pesan = 
+    "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
+    "Berikut link untuk monitoring PKL siswa di *" + d.Nama_DUDI + "*:\n\n" +
+    "🔗 " + link + "\n\n" +
+    "Melalui link ini Bapak/Ibu dapat:\n" +
+    "• Melihat daftar siswa PKL di DUDI\n" +
+    "• Approve absensi harian siswa\n" +
+    "• Approve jurnal kegiatan siswa\n\n" +
+    "Simpan link ini ya. Terima kasih.\n" +
+    "- SMK Muhammadiyah 1 Surakarta";
+
+  var nomor = formatWaNumber(d.WA_Pembimbing);
+  if (!nomor) {
+    Swal.fire({ icon: 'error', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit.' });
+    return;
+  }
+
+  var url = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
+  var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    window.open(url, '_blank');
+  } else {
+    Swal.fire({
+      title: 'Kirim Link ke WA?',
+      html: 'Link akan dikirim ke <strong>' + d.Nama_Pembimbing + '</strong><br>(' + d.WA_Pembimbing + ')',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#25D366'
+    }).then(function(r) {
+      if (r.isConfirmed) window.open(url, '_blank');
+    });
+  }
+}
 // ⭐ Cari lokasi lewat geocode
 function searchDUDILocation() {
   var q = document.getElementById('dudi_search_input').value.trim();
