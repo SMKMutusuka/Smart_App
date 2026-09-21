@@ -639,7 +639,6 @@ function showPage(pageId, clickedLink) {
       clickedLink.classList.add('active');
     }
   }
-
   var sidebar = DOM.sidebar || document.getElementById('sidebar');
   if (sidebar && sidebar.classList.contains('active')) toggleSidebar();
 
@@ -650,6 +649,7 @@ function showPage(pageId, clickedLink) {
     loadApprovalDashboard();
   }
   if (pageId === 'page-lokasi-kelas') loadLokasiSekolah();
+  if (pageId === 'page-dudi') loadDUDI();
   if (pageId === 'page-kelas') loadKelas();
   if (pageId === 'page-siswa') loadSiswa();
   if (pageId === 'page-laporan') initLaporan();
