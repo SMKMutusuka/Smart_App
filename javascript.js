@@ -1100,3 +1100,185 @@ document.addEventListener('DOMContentLoaded', function() {
   var mapSearchInput = document.getElementById('map_search_input');
   if (mapSearchInput) { mapSearchInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') { e.preventDefault(); searchLocation(); } }); }
 });
+// =============================================
+// DASHBOARD GTK & FUNGSI PELENGKAPNYA
+// =============================================
+
+function loadGTKDashboard() {
+  if (!currentUser || !currentUser.gtk) return;
+  var nbm = String(currentUser.gtk.NBM).trim();
+  var container = document.getElementById('gtk-dashboard-stats');
+  if (container) container.classList.remove('hidden');
+
+  var bulanEl = document.getElementById('gtk_filter_bulan');
+  var tahunEl = document.getElementById('gtk_filter_tahun');
+  var bulan = bulanEl ? bulanEl.value : '';
+  var tahun = tahunEl ? tahunEl.value : '';
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      if (!data || !data.success) return;
+      renderGTKDashboard(data);
+    })
+    .withFailureHandler(function(err) { hideLoading(); console.error(err); })
+    .getDashboardGTK(nbm, bulan, tahun);
+}
+
+function resetFilterGTK() {
+  if (document.getElementById('gtk_filter_bulan')) document.getElementById('gtk_filter_bulan').value = '';
+  if (document.getElementById('gtk_filter_tahun')) document.getElementById('gtk_filter_tahun').value = '';
+  loadGTKDashboard();
+}
+
+function populateTahunGTK(riwayat) {
+  var tahunEl = document.getElementById('gtk_filter_tahun');
+  if (!tahunEl) return;
+  var tahunBerjalan = String(new Date().getFullYear());
+  var tahunSet = {}; tahunSet[tahunBerjalan] = true;
+  (riwayat || []).forEach(function(r) {
+    var tgl = String(r.Tanggal || '');
+    if (tgl.length >= 4) { var th = tgl.substring(0, 4); if (/^\d{4}$/.test(th)) tahunSet[th] = true; }
+  });
+  var tahunList = Object.keys(tahunSet).sort().reverse();
+  var currentVal = tahunEl.value;
+  var html = '<option value="">-- Semua Tahun --</option>';
+  tahunList.forEach(function(t) { html += '<option value="' + t + '"' + (t === tahunBerjalan ? ' selected' : '') + '>' + t + '</option>'; });
+  tahunEl.innerHTML = html;
+  if (currentVal && tahunList.indexOf(currentVal) !== -1) tahunEl.value = currentVal;
+}
+
+function renderGTKDashboard(data) {
+  populateTahunGTK(data.riwayat);
+  var persenEl = document.getElementById('gtk-persen-info');
+  if (persenEl) {
+    var filterInfo = '';
+    if (data.filterBulan > 0 || data.filterTahun > 0) {
+      var bulanNama = data.filterBulan > 0 ? BULAN_INDONESIA[data.filterBulan - 1] : 'Semua Bulan';
+      var tahunNama = data.filterTahun > 0 ? data.filterTahun : 'Semua Tahun';
+      filterInfo = ' | Filter: ' + bulanNama + ' ' + tahunNama;
+    }
+    persenEl.textContent = (data.persenKehadiran || 0) + '% kehadiran (' + (data.totalHadir || 0) + ' dari ' + (data.totalHari || 0) + ' hari)' + filterInfo;
+  }
+  renderGTKChartPersonal(data.rekap.Hadir || 0, data.rekap.Sakit || 0, data.rekap.Izin || 0, data.rekap.Alpa || 0);
+  renderGTKTodayStatus(data.statusHariIni);
+  paginationState.gtkHistory.data = data.riwayat || [];
+  paginationState.gtkHistory.page = 1;
+  renderGTKHistoryTable();
+}
+
+function renderGTKChartPersonal(h, s, i, a) {
+  if (window.chartGTKPersonalInstance) window.chartGTKPersonalInstance.destroy();
+  var canvas = document.getElementById('chartGTKPersonal'); if (!canvas) return;
+  var ctx = canvas.getContext('2d'); var total = h + s + i + a; var values = [h, s, i, a]; var colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']; var labels = ['Hadir', 'Sakit', 'Izin', 'Alpa'];
+  window.chartGTKPersonalInstance = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#ffffff' }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '70%', plugins: { legend: { display: false } } } });
+  var legendEl = document.getElementById('doughnutLegendGTK');
+  if (legendEl) {
+    legendEl.innerHTML = '';
+    labels.forEach(function(label, idx) {
+      var pct = total > 0 ? ((values[idx] / total) * 100).toFixed(1) : '0.0';
+      legendEl.innerHTML += '<div class="doughnut-legend-item"><span class="doughnut-legend-dot" style="background:' + colors[idx] + ';"></span><span>' + label + '</span><span class="doughnut-legend-val">' + values[idx] + ' <small style="font-weight:500;color:#94a3b8;">(' + pct + '%)</small></span></div>';
+    });
+  }
+}
+
+function renderGTKTodayStatus(status) {
+  var box = document.getElementById('gtk-today-status-box'); if (!box) return;
+  if (!status) { box.innerHTML = '<p style="color:#94a3b8;">Data tidak tersedia</p>'; return; }
+  if (!status.sudahMasuk) {
+    box.innerHTML = '<div style="font-size:3em;color:#f59e0b;margin-bottom:10px;"><i class="fas fa-clock"></i></div><div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:6px;">Belum Presensi Hari Ini</div><div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Segera isi form presensi di bawah</div><button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById(\'formPresensiGTK\').scrollIntoView({behavior:\'smooth\'})"><i class="fas fa-arrow-down"></i> Ke Form Presensi</button>'; return;
+  }
+  var statusMap = { 'Hadir': { badge: 'badge-hadir', icon: 'fa-check-circle' }, 'Sakit': { badge: 'badge-sakit', icon: 'fa-thermometer-half' }, 'Izin': { badge: 'badge-izin', icon: 'fa-envelope' }, 'Pulang': { badge: 'badge-hadir', icon: 'fa-walking' }, 'Monitoring': { badge: 'badge-hadir', icon: 'fa-map-marked-alt' } };
+  var badgeInfo = statusMap[status.status] || { badge: 'badge-hadir', icon: 'fa-check' };
+  var html = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Status Hari Ini</div><div style="margin-bottom:12px;"><span class="badge-status-table ' + badgeInfo.badge + '" style="font-size:14px;padding:6px 18px;"><i class="fas ' + badgeInfo.icon + '"></i> ' + status.status + '</span></div><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;">';
+  if (status.waktuMasuk) html += '<div style="background:#ecfdf5;padding:8px 16px;border-radius:8px;"><div style="font-size:10px;color:#047857;font-weight:700;text-transform:uppercase;">Masuk</div><div style="font-size:16px;font-weight:800;color:#065f46;">' + formatJamSaja(status.waktuMasuk) + '</div></div>';
+  if (status.sudahPulang) html += '<div style="background:#e0e7ff;padding:8px 16px;border-radius:8px;"><div style="font-size:10px;color:#3730a3;font-weight:700;text-transform:uppercase;">Pulang</div><div style="font-size:16px;font-weight:800;color:#312e81;">' + formatJamSaja(status.waktuPulang) + '</div></div>';
+  else if (status.status === 'Hadir' || status.status === 'Monitoring') html += '<div style="background:#fef3c7;padding:8px 16px;border-radius:8px;"><div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase;">Pulang</div><div style="font-size:12px;font-weight:700;color:#78350f;">Belum</div></div>';
+  html += '</div>';
+  if (status.detail) {
+    var selfieLinks = [];
+    if (status.detail.Selfie_Url) selfieLinks.push('<a href="' + escapeHtml(status.detail.Selfie_Url) + '" target="_blank" class="link-surat" style="font-size:11px;"><i class="fas fa-camera"></i> Selfie Masuk</a>');
+    if (status.detail.Selfie_Pulang) selfieLinks.push('<a href="' + escapeHtml(status.detail.Selfie_Pulang) + '" target="_blank" class="link-surat" style="font-size:11px;background:#e0e7ff;color:#3730a3;border-color:#a5b4fc;"><i class="fas fa-camera"></i> Selfie Pulang</a>');
+    if (selfieLinks.length > 0) html += '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">' + selfieLinks.join(' ') + '</div>';
+  }
+  box.innerHTML = html;
+}
+
+function renderGTKHistoryTable() {
+  renderPaginationControls('gtkHistory', function(pageData) {
+    var tbody = document.getElementById('gtkHistoryTbody'); if (!tbody) return;
+    if (pageData.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted);">Belum ada riwayat presensi.</td></tr>'; return; }
+    var badgeMap = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa', 'Pulang': 'badge-hadir', 'Monitoring': 'badge-hadir' };
+    var htmlBuffer = new Array(pageData.length);
+    for (var i = 0; i < pageData.length; i++) {
+      var r = pageData[i];
+      var selfieMasuk = r.Selfie_Url ? '<a href="' + escapeHtml(r.Selfie_Url) + '" target="_blank" class="link-surat" style="font-size:10px;padding:2px 6px;" title="Selfie Masuk"><i class="fas fa-camera"></i> Masuk</a>' : '<span style="color:#94a3b8;font-size:10px;">-</span>';
+      var selfiePulang = r.Selfie_Pulang ? '<a href="' + escapeHtml(r.Selfie_Pulang) + '" target="_blank" class="link-surat" style="font-size:10px;padding:2px 6px;background:#e0e7ff;color:#3730a3;border-color:#a5b4fc;" title="Selfie Pulang"><i class="fas fa-camera"></i> Pulang</a>' : '<span style="color:#94a3b8;font-size:10px;">-</span>';
+      htmlBuffer[i] = '<tr><td>' + shortDate(r.Tanggal) + '</td><td><span class="badge-status-table ' + (badgeMap[r.Status] || '') + '">' + r.Status + '</span></td><td>' + formatJamSaja(r.Waktu_Masuk) + '</td><td>' + formatJamSaja(r.Waktu_Pulang) + '</td><td>' + (escapeHtml(r.Keterangan) || '-') + '</td><td>' + (r.Jarak_Meter ? r.Jarak_Meter + 'm' : '-') + '</td><td>' + selfieMasuk + '</td><td>' + selfiePulang + '</td></tr>';
+    }
+    tbody.innerHTML = htmlBuffer.join('');
+  });
+}
+
+function exportLaporanGTKPDF() {
+  if (!currentUser || !currentUser.gtk) { Swal.fire({ icon: 'error', title: 'Error', text: 'Data GTK tidak ditemukan.' }); return; }
+  var gtk = currentUser.gtk; var nbm = String(gtk.NBM).trim();
+  var bulanEl = document.getElementById('gtk_filter_bulan'); var tahunEl = document.getElementById('gtk_filter_tahun');
+  var bulan = bulanEl ? parseInt(bulanEl.value, 10) : 0; var tahun = tahunEl ? parseInt(tahunEl.value, 10) : 0;
+  var bulanLabel = bulan > 0 ? BULAN_INDONESIA[bulan - 1] : 'Semua Bulan'; var tahunLabel = tahun > 0 ? tahun : 'Semua Tahun';
+  Swal.fire({ title: 'Export Laporan PDF?', html: 'Anda akan mengunduh laporan presensi:<br><strong>' + bulanLabel + ' ' + tahunLabel + '</strong>', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Buat PDF', cancelButtonText: 'Batal', confirmButtonColor: '#dc2626' }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoading();
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoading();
+        if (!res || !res.success) { Swal.fire({ icon: 'error', title: 'Gagal', text: res.error || 'PDF gagal dibuat.' }); return; }
+        Swal.fire({ icon: 'success', title: 'PDF Berhasil Dibuat!', html: '<a href="' + res.url + '" target="_blank" class="btn btn-primary"><i class="fas fa-download"></i> Download / Buka PDF</a>', showCancelButton: true, confirmButtonText: '<i class="fas fa-external-link-alt"></i> Buka Sekarang', cancelButtonText: 'Tutup' }).then(function(res2) { if (res2.isConfirmed) window.open(res.url, '_blank'); });
+      })
+      .withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
+      .generateLaporanGTKPDF(nbm, bulan, tahun);
+  });
+}
+
+function openGTKSelfie() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) { openGTKSelfieWebcam(); return; }
+  var input = document.getElementById('gtk_input_selfie'); if (input) input.click();
+}
+
+function openGTKSelfieWebcam() {
+  var gtkPreview = document.getElementById('gtk-preview-selfie'); if (!gtkPreview) return;
+  var existingWebcam = document.getElementById('gtk-selfie-webcam-container');
+  if (!existingWebcam) {
+    var container = document.createElement('div'); container.id = 'gtk-selfie-webcam-container'; container.style.marginTop = '10px'; container.style.textAlign = 'center';
+    gtkPreview.parentNode.insertBefore(container, gtkPreview); existingWebcam = container;
+  }
+  existingWebcam.style.display = 'block';
+  existingWebcam.innerHTML = '<div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin" style="font-size:2em;color:var(--primary);"></i><p style="margin-top:10px;color:#64748b;font-weight:600;">Membuka kamera...</p></div>';
+  if (window.selfieWebcamStream) closeWebcam();
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+  .then(function(stream) {
+    window.selfieWebcamStream = stream;
+    existingWebcam.innerHTML = '<video id="gtk-selfie-video" autoplay playsinline muted style="width:100%;max-width:400px;border-radius:12px;background:#000;transform:scaleX(-1);"></video><div style="margin-top:10px;display:flex;gap:8px;justify-content:center;"><button type="button" class="btn btn-primary btn-sm" onclick="captureGTKSelfie()"><i class="fas fa-camera"></i> Ambil Foto</button><button type="button" class="btn btn-outline btn-sm" onclick="cancelGTKSelfie()"><i class="fas fa-times"></i> Batal</button></div>';
+    var video = document.getElementById('gtk-selfie-video'); if (video) { video.srcObject = stream; video.onloadedmetadata = function() { video.play(); }; }
+  })
+  .catch(function(err) {
+    Swal.fire({ icon: 'warning', title: 'Kamera Tidak Bisa Diakses', html: 'Gagal akses kamera: ' + (err.message || err.name) + '<br><br>Ingin pilih foto dari file?', showCancelButton: true, confirmButtonText: '<i class="fas fa-folder-open"></i> Pilih File', cancelButtonText: 'Tutup', confirmButtonColor: '#10b981' }).then(function(r) { if (r.isConfirmed) { var input = document.getElementById('gtk_input_selfie'); if (input) input.click(); } cancelGTKSelfie(); });
+  });
+}
+
+function captureGTKSelfie() {
+  var video = document.getElementById('gtk-selfie-video'); if (!video || !video.videoWidth) return;
+  var canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; var ctx = canvas.getContext('2d'); ctx.translate(canvas.width, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0);
+  var maxDim = 320; var w = canvas.width, h = canvas.height; if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+  if (w !== canvas.width) { var tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; tmp.getContext('2d').drawImage(canvas, 0, 0, w, h); canvas = tmp; }
+  var base64 = canvas.toDataURL('image/jpeg', 0.5); var q = 0.5; while (base64.length > 30000 && q > 0.15) { q -= 0.05; base64 = canvas.toDataURL('image/jpeg', q); }
+  document.getElementById('gtk_selfie_base64').value = base64;
+  var preview = document.getElementById('gtk-preview-selfie'); if (preview) { preview.src = base64; preview.style.display = 'block'; }
+  var statusEl = document.getElementById('gtk_selfie_status'); if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary-dark);font-weight:700;">✅ Foto Selfie tersimpan</span>';
+  closeWebcam(); var webcamCont = document.getElementById('gtk-selfie-webcam-container'); if (webcamCont) webcamCont.style.display = 'none';
+}
+
+function cancelGTKSelfie() {
+  closeWebcam(); var webcamCont = document.getElementById('gtk-selfie-webcam-container'); if (webcamCont) { webcamCont.style.display = 'none'; webcamCont.innerHTML = ''; }
+}
