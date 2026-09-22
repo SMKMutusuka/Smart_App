@@ -675,6 +675,7 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-pengaturan-gtk') showPengaturanGTK();
   if (pageId === 'page-ai-guru' && typeof initAIGuruPage === 'function') initAIGuruPage();
   if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') loadApprovalJurnalGuru();
+  if (pageId === 'page-monitoring-pkl-guru' && typeof loadMonitoringPKLGuru === 'function') loadMonitoringPKLGuru();
 }
 
 function initAdmin() {
