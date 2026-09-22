@@ -573,19 +573,24 @@ function handleLoginSiswa(e) {
 
   google.script.run
     .withSuccessHandler(function(res) {
-      hideLoading();
       if (res && res.status && res.role === 'Siswa') {
         currentUser = res;
         setupRoleUI('Siswa');
         Swal.fire({ icon: 'success', title: 'Berhasil Masuk', text: 'Selamat datang, ' + res.student.Nama_Siswa, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
+
         if (typeof checkPKLSiswaAktif === 'function') {
+          // Tunggu hasil PKL dari server dulu, BARU inisialisasi dashboard
           checkPKLSiswaAktif(String(res.student.NIS).trim(), function(pklInfo) {
             console.log('[Login] PKL aktif:', !!pklInfo);
+            hideLoading();
+            initSiswa(); 
           });
+        } else {
+          hideLoading();
+          initSiswa();
         }
-        initSiswa();
       }
     })
     .withFailureHandler(function(err) {
