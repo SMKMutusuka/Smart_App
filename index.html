@@ -805,65 +805,75 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzS-bgEwogqPX8iYk2QO4
 
       <div class="card">
         <form id="formAssignPKL" onsubmit="simpanAssignPKL(event)">
-          <input type="hidden" id="pkl_edit_mode" value="false">
+  <input type="hidden" id="pkl_edit_mode" value="false">
 
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <div class="form-group" style="flex:0 0 200px;">
-              <label for="pkl_filter_kelas"><i class="fas fa-filter"></i> Filter Kelas</label>
-              <select id="pkl_filter_kelas" class="form-control" onchange="filterSiswaByKelas()">
-                <option value="">-- Semua Kelas XII --</option>
-              </select>
-            </div>
-            <div class="form-group" style="flex:1;min-width:250px;">
-              <label for="pkl_siswa"><i class="fas fa-user-graduate"></i> Siswa Kelas XII</label>
-              <select id="pkl_siswa" class="form-control" required>
-                <option value="">-- Pilih Siswa XII --</option>
-              </select>
-            </div>
-          </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="form-group" style="flex:0 0 200px;">
+      <label for="pkl_filter_kelas"><i class="fas fa-filter"></i> Filter Kelas</label>
+      <select id="pkl_filter_kelas" class="form-control" onchange="filterSiswaByKelas()">
+        <option value="">-- Semua Kelas XII --</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:250px;">
+      <label for="pkl_siswa"><i class="fas fa-user-graduate"></i> Siswa Kelas XII</label>
+      <select id="pkl_siswa" class="form-control" required>
+        <option value="">-- Pilih Siswa XII --</option>
+      </select>
+    </div>
+  </div>
 
-          <div class="form-group">
-            <label for="pkl_dudi"><i class="fas fa-building"></i> DUDI / Tempat PKL</label>
-            <select id="pkl_dudi" class="form-control" required><option value="">-- Pilih DUDI --</option></select>
-          </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="form-group" style="flex:1;min-width:220px;">
+      <label for="pkl_dudi"><i class="fas fa-building"></i> DUDI / Tempat PKL</label>
+      <select id="pkl_dudi" class="form-control" required>
+        <option value="">-- Pilih DUDI --</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:220px;">
+      <label for="pkl_pembimbing"><i class="fas fa-chalkboard-teacher"></i> Pembimbing Sekolah (Guru)</label>
+      <select id="pkl_pembimbing" class="form-control" required>
+        <option value="">-- Pilih Guru Pembimbing --</option>
+      </select>
+    </div>
+  </div>
 
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <div class="form-group" style="flex:1;min-width:150px;">
-              <label for="pkl_mulai"><i class="fas fa-calendar-check"></i> Tanggal Mulai</label>
-              <input type="date" id="pkl_mulai" class="form-control" required>
-            </div>
-            <div class="form-group" style="flex:1;min-width:150px;">
-              <label for="pkl_selesai"><i class="fas fa-calendar-times"></i> Tanggal Selesai</label>
-              <input type="date" id="pkl_selesai" class="form-control" required>
-            </div>
-            <div class="form-group" style="flex:0 0 130px;">
-              <label for="pkl_status">Status</label>
-              <select id="pkl_status" class="form-control">
-                <option value="Aktif">Aktif</option>
-                <option value="Selesai">Selesai</option>
-              </select>
-            </div>
-          </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="form-group" style="flex:1;min-width:150px;">
+      <label for="pkl_mulai"><i class="fas fa-calendar-check"></i> Tanggal Mulai</label>
+      <input type="date" id="pkl_mulai" class="form-control" required>
+    </div>
+    <div class="form-group" style="flex:1;min-width:150px;">
+      <label for="pkl_selesai"><i class="fas fa-calendar-times"></i> Tanggal Selesai</label>
+      <input type="date" id="pkl_selesai" class="form-control" required>
+    </div>
+    <div class="form-group" style="flex:0 0 130px;">
+      <label for="pkl_status">Status</label>
+      <select id="pkl_status" class="form-control">
+        <option value="Aktif">Aktif</option>
+        <option value="Selesai">Selesai</option>
+      </select>
+    </div>
+  </div>
 
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan PKL</button>
-            <button type="button" class="btn btn-outline" onclick="resetFormPKL()"><i class="fas fa-times"></i> Batal</button>
-          </div>
-        </form>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan PKL</button>
+    <button type="button" class="btn btn-outline" onclick="resetFormPKL()"><i class="fas fa-times"></i> Batal</button>
+  </div>
+</form>
       </div>
 
       <div class="card">
         <div class="chart-card-title" style="margin-bottom:14px;"><i class="fas fa-list"></i> Daftar Siswa PKL</div>
         <div class="laporan-scroll">
           <table class="table-laporan">
-            <thead>
-              <tr>
-                <th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>DUDI</th>
-                <th>Periode</th><th>Status</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyPKL"></tbody>
-          </table>
+  <thead>
+    <tr>
+      <th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>DUDI</th>
+      <th>Pembimbing Sekolah</th><th>Periode</th><th>Status</th><th>Aksi</th>
+    </tr>
+  </thead>
+  <tbody id="tbodyPKL"></tbody>
+</table>
         </div>
       </div>
     </section>
