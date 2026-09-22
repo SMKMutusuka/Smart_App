@@ -725,6 +725,15 @@ function destroyCharts() {
 }
 
 function loadDashboardCharts(startDate, endDate) {
+  // ⭐ FIX: kalau tidak ada argumen, ambil dari input tanggal (default hari ini)
+  if (!startDate) {
+    var dashInput = document.getElementById('dash_date');
+    startDate = (dashInput && dashInput.value) ? dashInput.value : todayLocalISO();
+  }
+  if (!endDate) endDate = startDate;
+
+  console.log('[Dashboard] Kirim tanggal:', startDate, '→', endDate);
+
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
@@ -753,7 +762,7 @@ function loadDashboardCharts(startDate, endDate) {
       renderChartDistribusi(totalRekap);
       renderChartPerKelas(rekapPerKelas, totalKelas);
 
-      var tanggalWA = (startDate && endDate && startDate === endDate) ? startDate : todayLocalISO();
+      var tanggalWA = (startDate === endDate) ? startDate : todayLocalISO();
       loadWaNotifSection(tanggalWA);
     })
     .withFailureHandler(function(err) {
@@ -762,7 +771,6 @@ function loadDashboardCharts(startDate, endDate) {
     })
     .getDashboardAdmin(startDate, endDate);
 }
-
 function renderDashStats(data) {
   data = data || {};
   var siswaRekap = data.siswaRekap || data.totalRekap || { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
