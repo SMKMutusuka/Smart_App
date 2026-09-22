@@ -1,9 +1,9 @@
 // =============================================
 // MODUL PKL — Frontend FINAL
 // File: js-pkl.js
-// Versi: v2026-09-22c
+// Versi: v2026-09-22d (FIX orphaned code)
 // =============================================
- 
+
 // ═══════════ STATE ═══════════
 var dudiCache = [];
 var gtkCache = [];
@@ -316,7 +316,6 @@ function loadAssignPKL() {
   google.script.run
     .withSuccessHandler(function(bundle) {
       hideLoading();
-      // bundle = { pkl: [...], siswa: {...}, dudi: [...], gtk: [...] }
       pklCache = Array.isArray(bundle.pkl) ? bundle.pkl : [];
       siswaXIICache = (bundle.siswa && bundle.siswa.siswa) ? bundle.siswa.siswa : [];
       dudiListCache = Array.isArray(bundle.dudi) ? bundle.dudi : [];
@@ -333,7 +332,7 @@ function loadAssignPKL() {
 }
 
 function populateDropdownPKLFromBundle() {
-  // Filter kelas
+  // ─── Filter kelas ───
   var kelasList = {};
   siswaXIICache.forEach(function(s) { if (s.Nama_Kelas) kelasList[s.Nama_Kelas] = true; });
   var selKelas = document.getElementById('pkl_filter_kelas');
@@ -347,7 +346,7 @@ function populateDropdownPKLFromBundle() {
   }
   populateDropdownSiswa(siswaXIICache);
 
-  // DUDI
+  // ─── DUDI ───
   var selDudi = document.getElementById('pkl_dudi');
   if (selDudi) {
     selDudi.innerHTML = '<option value="">-- Pilih DUDI --</option>';
@@ -359,7 +358,7 @@ function populateDropdownPKLFromBundle() {
     });
   }
 
-  // GTK
+  // ─── GTK (Pembimbing Sekolah) ───
   var selPemb = document.getElementById('pkl_pembimbing');
   if (selPemb) {
     if (gtkCache.length === 0) {
@@ -375,52 +374,6 @@ function populateDropdownPKLFromBundle() {
     }
   }
 }
-
-  // ─── 2. DUDI ───
-  google.script.run
-    .withSuccessHandler(function(list) {
-      dudiListCache = Array.isArray(list) ? list : [];
-      var sel = document.getElementById('pkl_dudi');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">-- Pilih DUDI --</option>';
-      dudiListCache.forEach(function(d) {
-        var opt = document.createElement('option');
-        opt.value = d.ID_DUDI;
-        opt.textContent = d.Nama_DUDI + ' (' + d.ID_DUDI + ')';
-        sel.appendChild(opt);
-      });
-    })
-    .withFailureHandler(function(err) {
-      console.error('[PKL] Gagal load DUDI:', err);
-    })
-    .getAllDUDI();
-
-  // ─── 3. GTK (Guru) untuk Pembimbing Sekolah ───
-  google.script.run
-    .withSuccessHandler(function(list) {
-      gtkCache = Array.isArray(list) ? list : [];
-      var sel = document.getElementById('pkl_pembimbing');
-      if (!sel) return;
-
-      if (gtkCache.length === 0) {
-        sel.innerHTML = '<option value="">-- Tidak ada guru terdaftar di Data_GTK --</option>';
-        return;
-      }
-
-      sel.innerHTML = '<option value="">-- Pilih Guru Pembimbing (' + gtkCache.length + ' guru) --</option>';
-      gtkCache.forEach(function(g) {
-        var opt = document.createElement('option');
-        opt.value = g.NBM;
-        opt.textContent = g.Nama_GTK + ' (NBM: ' + g.NBM + ')';
-        sel.appendChild(opt);
-      });
-    })
-    .withFailureHandler(function(err) {
-      console.error('[PKL] Gagal load GTK:', err);
-      var sel = document.getElementById('pkl_pembimbing');
-      if (sel) sel.innerHTML = '<option value="">-- Error: ' + err.message + ' --</option>';
-    })
-    .getGTKList();
 
 function populateDropdownSiswa(siswaList) {
   var sel = document.getElementById('pkl_siswa');
@@ -562,7 +515,6 @@ function renderPKLTable() {
       ? '<span class="badge-status-table badge-hadir">Aktif</span>'
       : '<span class="badge-status-table badge-alpa">Selesai</span>';
 
-    // ⭐ Nama pembimbing
     var namaPembimbing = '-';
     if (p.Nama_Pembimbing_Sekolah) {
       namaPembimbing = p.Nama_Pembimbing_Sekolah;
@@ -634,7 +586,7 @@ function checkPKLSiswaAktif(nis, callback) {
 
 function loadPKLPresensiPage() {
   if (!currentUser || !currentUser.student) return;
-  var nis = String(currentUser.student.NIS).trim();
+  var nisClean = nis();
 
   var container = document.getElementById('pkl-presensi-content');
   if (!container) return;
@@ -662,12 +614,12 @@ function loadPKLPresensiPage() {
         .withFailureHandler(function(err) {
           container.innerHTML = '<div class="card" style="background:#fee2e2;padding:18px;">' + err.message + '</div>';
         })
-        .cekAbsenPKLHariIni(nis);
+        .cekAbsenPKLHariIni(nisClean);
     })
     .withFailureHandler(function(err) {
       container.innerHTML = '<div class="card" style="background:#fee2e2;padding:18px;">' + err.message + '</div>';
     })
-    .getPKLByNIS(nis);
+    .getPKLByNIS(nisClean);
 }
 
 function renderPKLPresensiPage(container, pklInfo, absen) {
@@ -735,7 +687,7 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
       renderPKLRiwayat(list);
     })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatAbsenPKL(nis());
+    .getRiwayatAbsenPKL(nisClean);
 }
 
 function nis() {
@@ -1107,7 +1059,7 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
   google.script.run
     .withSuccessHandler(function(list) { renderPKLJurnalRiwayat(list); })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatJurnalPKL(nis());
+    .getRiwayatJurnalPKL(nisClean);
 }
 
 function openPKLJurnalFileDialog() {
