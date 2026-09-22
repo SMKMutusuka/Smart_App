@@ -421,7 +421,6 @@ function populateDropdownPKLFromBundle() {
       if (sel) sel.innerHTML = '<option value="">-- Error: ' + err.message + ' --</option>';
     })
     .getGTKList();
-}
 
 function populateDropdownSiswa(siswaList) {
   var sel = document.getElementById('pkl_siswa');
