@@ -1054,31 +1054,53 @@ function submitStudentSelfAbsen(e) {
 function handleGTKStatusChange(status) {
   var hadirSec = document.getElementById('gtk-hadir-section');
   var suratSec = document.getElementById('gtk-surat-section');
+  var dudiSec = document.getElementById('gtk-dudi-section');
   var btnSubmit = document.getElementById('btnSubmitGTK');
 
-  if (status === 'Hadir' || status === 'Pulang') {
+  if (dudiSec) dudiSec.classList.add('hidden'); // Sembunyikan default
+
+  if (status === 'Hadir' || status === 'Pulang' || status === 'Monitoring') {
     if (hadirSec) hadirSec.classList.remove('hidden');
     if (suratSec) suratSec.classList.add('hidden');
 
-    if (btnSubmit) {
-      if (status === 'Pulang') {
-        btnSubmit.innerHTML = '<i class="fas fa-sign-out-alt"></i> Kirim Presensi Pulang';
-        btnSubmit.className = 'btn btn-danger';
-      } else {
-        btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
-        btnSubmit.className = 'btn btn-primary';
+    if (status === 'Monitoring') {
+      if (dudiSec) {
+        dudiSec.classList.remove('hidden');
+        loadDUDIForMonitoring(); // Fetch data DUDI
       }
+      btnSubmit.innerHTML = '<i class="fas fa-map-marked-alt"></i> Kirim Presensi Monitoring';
+      btnSubmit.className = 'btn btn-primary';
+    } else if (status === 'Pulang') {
+      btnSubmit.innerHTML = '<i class="fas fa-sign-out-alt"></i> Kirim Presensi Pulang';
+      btnSubmit.className = 'btn btn-danger';
+    } else {
+      btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
+      btnSubmit.className = 'btn btn-primary';
     }
 
     getGTKLocation();
   } else if (status === 'Sakit' || status === 'Izin') {
     if (hadirSec) hadirSec.classList.add('hidden');
     if (suratSec) suratSec.classList.remove('hidden');
-
-    if (btnSubmit) {
-      btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
-      btnSubmit.className = 'btn btn-primary';
-    }
+    
+    btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
+    btnSubmit.className = 'btn btn-primary';
+  }
+}
+// Fungsi bantu load dropdown DUDI
+function loadDUDIForMonitoring() {
+  var sel = document.getElementById('gtk_dudi_monitoring');
+  if (sel && sel.options.length <= 1) { // Load sekali saja
+    google.script.run
+      .withSuccessHandler(function(list) {
+        sel.innerHTML = '<option value="">-- Pilih Lokasi DUDI --</option>';
+        if(list) {
+          list.forEach(function(d) {
+            sel.innerHTML += '<option value="'+d.ID_DUDI+'">'+escapeHtml(d.Nama_DUDI)+'</option>';
+          });
+        }
+      })
+      .getAllDUDI();
   }
 }
 
@@ -1234,11 +1256,7 @@ function autoProcessSuratGTK(input) {
 
 function handlePresensiGTK(e) {
   if (e) e.preventDefault();
-
-  if (!currentUser || !currentUser.gtk) {
-    Swal.fire({ icon: 'error', title: 'Sesi Habis', text: 'Data akun GTK tidak terbaca. Silakan keluar dan login kembali.' });
-    return;
-  }
+  if (!currentUser || !currentUser.gtk) return;
 
   var statusRadio = document.querySelector('input[name="gtk_status"]:checked');
   var status = statusRadio ? statusRadio.value : 'Hadir';
@@ -1247,74 +1265,64 @@ function handlePresensiGTK(e) {
   var lng = document.getElementById('gtk_longitude') ? document.getElementById('gtk_longitude').value : '';
   var selfieBase64 = document.getElementById('gtk_selfie_base64') ? document.getElementById('gtk_selfie_base64').value : '';
   var suratBase64 = document.getElementById('gtk_surat_base64') ? document.getElementById('gtk_surat_base64').value : '';
+  var idDudi = document.getElementById('gtk_dudi_monitoring') ? document.getElementById('gtk_dudi_monitoring').value : '';
 
-  if (status === 'Hadir' || status === 'Pulang') {
+  if (status === 'Hadir' || status === 'Pulang' || status === 'Monitoring') {
     if (!lat || !lng || lat == "0" || lng == "0") {
-      Swal.fire({ icon: 'warning', title: 'GPS Belum Terkunci', text: 'Titik GPS belum terkunci. Klik tombol Refresh GPS dan pastikan GPS aktif.' });
+      Swal.fire({ icon: 'warning', title: 'GPS Belum Terkunci', text: 'Klik tombol Refresh GPS dan pastikan GPS aktif.' });
       return;
     }
     if (!selfieBase64) {
-      Swal.fire({ icon: 'warning', title: 'Foto Selfie Diperlukan', text: 'Silakan ambil foto selfie kamera depan untuk presensi ' + status + '!' });
+      Swal.fire({ icon: 'warning', title: 'Foto Selfie Diperlukan', text: 'Silakan ambil foto selfie untuk presensi ' + status + '!' });
+      return;
+    }
+    if (status === 'Monitoring' && !idDudi) {
+      Swal.fire({ icon: 'warning', title: 'Pilih DUDI', text: 'Silakan pilih lokasi DUDI tempat Anda memonitoring.' });
       return;
     }
   } else if (status === 'Sakit' || status === 'Izin') {
     if (!suratBase64) {
-      Swal.fire({ icon: 'warning', title: 'Bukti Diperlukan', text: 'Silakan ambil foto surat atau pilih berkas bukti dokter/izin terlebih dahulu!' });
+      Swal.fire({ icon: 'warning', title: 'Bukti Diperlukan', text: 'Silakan ambil foto bukti terlebih dahulu!' });
       return;
     }
   }
 
   showLoading();
   var btn = document.getElementById('btnSubmitGTK');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim data...';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
+
+  // Callback sukses
+  var successHandler = function(msg) {
+    hideLoading();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK'; }
+    Swal.fire({ icon: 'success', title: 'Berhasil', text: msg, confirmButtonColor: '#10b981' });
+    document.getElementById('formPresensiGTK').reset();
+    document.getElementById('gtk_selfie_base64').value = '';
+    document.getElementById('gtk_surat_base64').value = '';
+    var previewSelfie = document.getElementById('gtk-preview-selfie');
+    if (previewSelfie) { previewSelfie.src = ''; previewSelfie.style.display = 'none'; }
+    handleGTKStatusChange('Hadir');
+    if (typeof loadGTKDashboard === 'function') loadGTKDashboard();
+  };
+
+  var failureHandler = function(err) {
+    hideLoading();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK'; }
+    Swal.fire({ icon: 'error', title: 'Gagal Presensi', text: err.message, confirmButtonColor: '#10b981' });
+  };
+
+  // Routing
+  if (status === 'Monitoring') {
+    google.script.run
+      .withSuccessHandler(successHandler)
+      .withFailureHandler(failureHandler)
+      .submitMonitoringPKL(currentUser.gtk.NBM, idDudi, lat, lng, selfieBase64, ket);
+  } else {
+    google.script.run
+      .withSuccessHandler(successHandler)
+      .withFailureHandler(failureHandler)
+      .submitAbsensiGTK(currentUser.gtk.NBM, status, ket, lat, lng, selfieBase64, suratBase64);
   }
-
-  google.script.run
-    .withSuccessHandler(function(msg) {
-      hideLoading();
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
-      }
-      Swal.fire({ icon: 'success', title: 'Presensi Sukses', text: msg, confirmButtonColor: '#10b981' });
-
-      document.getElementById('formPresensiGTK').reset();
-      if (document.getElementById('gtk_selfie_base64')) document.getElementById('gtk_selfie_base64').value = '';
-      if (document.getElementById('gtk_surat_base64')) document.getElementById('gtk_surat_base64').value = '';
-      if (document.getElementById('gtk_input_selfie')) document.getElementById('gtk_input_selfie').value = '';
-
-      var previewSelfie = document.getElementById('gtk-preview-selfie');
-      var previewSurat = document.getElementById('gtk-preview-surat');
-      if (previewSelfie) { previewSelfie.src = ''; previewSelfie.style.display = 'none'; }
-      if (previewSurat) { previewSurat.src = ''; previewSurat.style.display = 'none'; }
-
-      var statusSelfie = document.getElementById('gtk_selfie_status');
-      if (statusSelfie) statusSelfie.textContent = 'Kamera siap...';
-      var statusSurat = document.getElementById('gtk_surat_status');
-      if (statusSurat) statusSurat.textContent = 'Jika sakit dg Surat Dokter, jika izin dengan bukti kegiatan';
-
-      handleGTKStatusChange('Hadir');
-
-      if (typeof loadGTKDashboard === 'function') {
-        loadGTKDashboard();
-        // ⭐ Fallback: paksa hide loading setelah 1.5 detik
-setTimeout(function() {
-  var loader = document.getElementById('global-loader');
-  if (loader) loader.classList.add('hidden');
-}, 1500);
-      }
-    })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Presensi GTK';
-      }
-      Swal.fire({ icon: 'error', title: 'Gagal Presensi', text: err.message, confirmButtonColor: '#10b981' });
-    })
-    .submitAbsensiGTK(currentUser.gtk.NBM, status, ket, lat, lng, selfieBase64, suratBase64);
 }
 
 // =============================================
