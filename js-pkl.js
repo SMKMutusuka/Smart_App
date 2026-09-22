@@ -1,13 +1,23 @@
 // =============================================
-// MODUL PKL — Frontend
+// MODUL PKL — Frontend FINAL
 // File: js-pkl.js
-// Versi: v2026-09-22b (Pembimbing Sekolah + NBM)
+// Versi: v2026-09-22c
 // =============================================
 
+// ═══════════ STATE ═══════════
 var dudiCache = [];
 var gtkCache = [];
+var pklCache = [];
+var siswaXIICache = [];
+var dudiListCache = [];
+var pklInfoSiswa = null;
+var absenPKLHariIni = null;
+var jurnalPKLHariIni = null;
 
-// ⭐ Load semua DUDI
+// =============================================
+// DUDI — CRUD
+// =============================================
+
 function loadDUDI() {
   showLoading();
   google.script.run
@@ -33,11 +43,13 @@ function renderDUDITable() {
   }
 
   var htmlBuffer = dudiCache.map(function(d) {
+    var lat = parseFloat(d.Latitude) || 0;
+    var lng = parseFloat(d.Longitude) || 0;
     return '<tr>' +
       '<td>' + escapeHtml(d.ID_DUDI) + '</td>' +
       '<td style="text-align:left;"><strong>' + escapeHtml(d.Nama_DUDI) + '</strong></td>' +
       '<td>' + (escapeHtml(d.Nama_Pembimbing) || '-') + '</td>' +
-      '<td style="font-size:10.5px;font-family:monospace;">' + (parseFloat(d.Latitude).toFixed(6)) + ', ' + (parseFloat(d.Longitude).toFixed(6)) + '</td>' +
+      '<td style="font-size:10.5px;font-family:monospace;">' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</td>' +
       '<td>' + (d.Radius_Meter || 20) + 'm</td>' +
       '<td><span class="chart-badge" style="cursor:pointer;" onclick="copyKode(\'' + escapeHtml(d.Kode_Akses) + '\')">' + escapeHtml(d.Kode_Akses) + ' <i class="fas fa-copy"></i></span></td>' +
       '<td><button class="btn btn-outline btn-sm" onclick="copyLinkPembimbing(\'' + escapeHtml(d.Kode_Akses) + '\')"><i class="fas fa-link"></i> Copy Link</button></td>' +
@@ -89,7 +101,7 @@ function editDUDI(idDudi) {
   var d = dudiCache.find(function(x) { return String(x.ID_DUDI) === String(idDudi); });
   if (!d) return;
 
-  document.getElementById('dudi_id').value = d.ID_DUDI;
+  document.getElementById('dudi_id').value = d.ID_DUDI || '';
   document.getElementById('dudi_nama').value = d.Nama_DUDI || '';
   document.getElementById('dudi_alamat').value = d.Alamat || '';
   document.getElementById('dudi_lat').value = d.Latitude || '';
@@ -134,7 +146,8 @@ function resetFormDUDI() {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('dudi_radius').value = 20;
+  var rad = document.getElementById('dudi_radius');
+  if (rad) rad.value = 20;
 }
 
 function generateKode() {
@@ -251,6 +264,8 @@ function searchDUDILocation() {
         document.getElementById('dudi_lng').value = res.longitude.toFixed(6);
         document.getElementById('dudi_alamat').value = res.display_name || q;
         Swal.fire({ icon: 'success', title: 'Lokasi Ditemukan', text: res.display_name, timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Tidak Ditemukan', text: 'Alamat tidak ditemukan.' });
       }
     })
     .withFailureHandler(function(err) {
@@ -277,7 +292,13 @@ function useCurrentLocationForDUDI() {
     function(pos) {
       document.getElementById('dudi_lat').value = pos.coords.latitude.toFixed(6);
       document.getElementById('dudi_lng').value = pos.coords.longitude.toFixed(6);
-      Swal.fire({ icon: 'success', title: 'Lokasi Didapat', html: 'Lat: ' + pos.coords.latitude.toFixed(6) + '<br>Lng: ' + pos.coords.longitude.toFixed(6), timer: 2000, showConfirmButton: false });
+      Swal.fire({
+        icon: 'success',
+        title: 'Lokasi Didapat',
+        html: 'Lat: ' + pos.coords.latitude.toFixed(6) + '<br>Lng: ' + pos.coords.longitude.toFixed(6),
+        timer: 2000,
+        showConfirmButton: false
+      });
     },
     function(err) {
       Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
@@ -289,9 +310,6 @@ function useCurrentLocationForDUDI() {
 // =============================================
 // ASSIGN PKL — Frontend
 // =============================================
-var pklCache = [];
-var siswaXIICache = [];
-var dudiListCache = [];
 
 function loadAssignPKL() {
   showLoading();
@@ -310,7 +328,7 @@ function loadAssignPKL() {
 }
 
 function loadDropdownsPKL() {
-  // Load siswa XII (dengan filter kelas)
+  // ─── 1. Siswa XII + filter kelas ───
   google.script.run
     .withSuccessHandler(function(res) {
       var siswaList = (res && res.siswa) ? res.siswa : [];
@@ -332,11 +350,11 @@ function loadDropdownsPKL() {
       populateDropdownSiswa(siswaList);
     })
     .withFailureHandler(function(err) {
-      console.error('Gagal load siswa XII:', err);
+      console.error('[PKL] Gagal load siswa XII:', err);
     })
     .getSiswaXII();
 
-  // Load DUDI
+  // ─── 2. DUDI ───
   google.script.run
     .withSuccessHandler(function(list) {
       dudiListCache = Array.isArray(list) ? list : [];
@@ -350,24 +368,36 @@ function loadDropdownsPKL() {
         sel.appendChild(opt);
       });
     })
-    .withFailureHandler(function(err) { console.error(err); })
+    .withFailureHandler(function(err) {
+      console.error('[PKL] Gagal load DUDI:', err);
+    })
     .getAllDUDI();
 
-  // ⭐ Load GTK (guru) untuk Pembimbing Sekolah
+  // ─── 3. GTK (Guru) untuk Pembimbing Sekolah ───
   google.script.run
     .withSuccessHandler(function(list) {
       gtkCache = Array.isArray(list) ? list : [];
       var sel = document.getElementById('pkl_pembimbing');
       if (!sel) return;
-      sel.innerHTML = '<option value="">-- Pilih Guru Pembimbing --</option>';
+
+      if (gtkCache.length === 0) {
+        sel.innerHTML = '<option value="">-- Tidak ada guru terdaftar di Data_GTK --</option>';
+        return;
+      }
+
+      sel.innerHTML = '<option value="">-- Pilih Guru Pembimbing (' + gtkCache.length + ' guru) --</option>';
       gtkCache.forEach(function(g) {
         var opt = document.createElement('option');
         opt.value = g.NBM;
-        opt.textContent = (g.Nama_GTK || '-') + ' (NBM: ' + g.NBM + ')';
+        opt.textContent = g.Nama_GTK + ' (NBM: ' + g.NBM + ')';
         sel.appendChild(opt);
       });
     })
-    .withFailureHandler(function(err) { console.error('Gagal load GTK:', err); })
+    .withFailureHandler(function(err) {
+      console.error('[PKL] Gagal load GTK:', err);
+      var sel = document.getElementById('pkl_pembimbing');
+      if (sel) sel.innerHTML = '<option value="">-- Error: ' + err.message + ' --</option>';
+    })
     .getGTKList();
 }
 
@@ -378,7 +408,7 @@ function populateDropdownSiswa(siswaList) {
   var currentVal = sel.value;
   sel.innerHTML = '<option value="">-- Pilih Siswa XII --</option>';
 
-  siswaList.forEach(function(s) {
+  (siswaList || []).forEach(function(s) {
     var opt = document.createElement('option');
     opt.value = s.NIS;
     opt.textContent = s.Nama_Kelas + ' | ' + s.NIS + ' — ' + s.Nama_Siswa;
@@ -406,17 +436,24 @@ function filterSiswaByKelas() {
 
 function simpanAssignPKL(e) {
   e.preventDefault();
+
   var data = {
     NIS: document.getElementById('pkl_siswa').value,
     ID_DUDI: document.getElementById('pkl_dudi').value,
-    NBM_Pembimbing_Sekolah: document.getElementById('pkl_pembimbing').value,  // ⭐ BARU
+    NBM_Pembimbing_Sekolah: document.getElementById('pkl_pembimbing').value,
     Tanggal_Mulai: document.getElementById('pkl_mulai').value,
     Tanggal_Selesai: document.getElementById('pkl_selesai').value,
     Status: document.getElementById('pkl_status').value
   };
 
-  if (!data.NIS || !data.ID_DUDI || !data.NBM_Pembimbing_Sekolah || !data.Tanggal_Mulai || !data.Tanggal_Selesai) {
-    Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Semua field wajib diisi termasuk Pembimbing Sekolah.' });
+  if (!data.NIS) { Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Siswa wajib dipilih.' }); return; }
+  if (!data.ID_DUDI) { Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'DUDI wajib dipilih.' }); return; }
+  if (!data.NBM_Pembimbing_Sekolah) { Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Pembimbing Sekolah wajib dipilih.' }); return; }
+  if (!data.Tanggal_Mulai) { Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Tanggal Mulai wajib diisi.' }); return; }
+  if (!data.Tanggal_Selesai) { Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Tanggal Selesai wajib diisi.' }); return; }
+
+  if (data.Tanggal_Selesai < data.Tanggal_Mulai) {
+    Swal.fire({ icon: 'warning', title: 'Tanggal Tidak Valid', text: 'Tanggal Selesai harus ≥ Tanggal Mulai.' });
     return;
   }
 
@@ -441,10 +478,10 @@ function editPKL(nis) {
 
   document.getElementById('pkl_siswa').value = p.NIS;
   document.getElementById('pkl_dudi').value = p.ID_DUDI;
-  document.getElementById('pkl_pembimbing').value = p.NBM_Pembimbing_Sekolah || '';  // ⭐ BARU
-  document.getElementById('pkl_mulai').value = p.Tanggal_Mulai;
-  document.getElementById('pkl_selesai').value = p.Tanggal_Selesai;
-  document.getElementById('pkl_status').value = p.Status;
+  document.getElementById('pkl_pembimbing').value = p.NBM_Pembimbing_Sekolah || '';
+  document.getElementById('pkl_mulai').value = p.Tanggal_Mulai || '';
+  document.getElementById('pkl_selesai').value = p.Tanggal_Selesai || '';
+  document.getElementById('pkl_status').value = p.Status || 'Aktif';
   document.getElementById('pkl_edit_mode').value = 'true';
   document.getElementById('formAssignPKL').scrollIntoView({ behavior: 'smooth' });
 }
@@ -481,8 +518,10 @@ function resetFormPKL() {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('pkl_status').value = 'Aktif';
-  document.getElementById('pkl_edit_mode').value = 'false';
+  var st = document.getElementById('pkl_status');
+  if (st) st.value = 'Aktif';
+  var em = document.getElementById('pkl_edit_mode');
+  if (em) em.value = 'false';
 
   populateDropdownSiswa(siswaXIICache);
 }
@@ -502,14 +541,14 @@ function renderPKLTable() {
       ? '<span class="badge-status-table badge-hadir">Aktif</span>'
       : '<span class="badge-status-table badge-alpa">Selesai</span>';
 
-    // ⭐ Cari nama guru pembimbing dari cache
+    // ⭐ Nama pembimbing
     var namaPembimbing = '-';
     if (p.Nama_Pembimbing_Sekolah) {
       namaPembimbing = p.Nama_Pembimbing_Sekolah;
+      if (p.NBM_Pembimbing_Sekolah) namaPembimbing += ' (' + p.NBM_Pembimbing_Sekolah + ')';
     } else if (p.NBM_Pembimbing_Sekolah) {
       var g = gtkCache.find(function(x) { return String(x.NBM) === String(p.NBM_Pembimbing_Sekolah); });
-      if (g) namaPembimbing = g.Nama_GTK + ' (' + p.NBM_Pembimbing_Sekolah + ')';
-      else namaPembimbing = p.NBM_Pembimbing_Sekolah;
+      namaPembimbing = g ? (g.Nama_GTK + ' (' + p.NBM_Pembimbing_Sekolah + ')') : p.NBM_Pembimbing_Sekolah;
     }
 
     return '<tr>' +
@@ -517,7 +556,7 @@ function renderPKLTable() {
       '<td style="text-align:left;"><strong>' + escapeHtml(p.Nama_Siswa) + '</strong></td>' +
       '<td>' + escapeHtml(p.Nama_Kelas) + '</td>' +
       '<td style="text-align:left;">' + escapeHtml(p.Nama_DUDI) + '</td>' +
-      '<td style="text-align:left;">' + escapeHtml(namaPembimbing) + '</td>' +
+      '<td style="text-align:left;font-size:11.5px;">' + escapeHtml(namaPembimbing) + '</td>' +
       '<td style="font-size:11px;">' + periode + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td>' +
@@ -530,11 +569,8 @@ function renderPKLTable() {
 }
 
 // =============================================
-// SISWA PKL — Presensi & Jurnal
+// SISWA PKL — Menu & Init
 // =============================================
-var pklInfoSiswa = null;
-var absenPKLHariIni = null;
-var jurnalPKLHariIni = null;
 
 function initPKLSiswa(pklInfo) {
   pklInfoSiswa = pklInfo;
@@ -564,14 +600,16 @@ function checkPKLSiswaAktif(nis, callback) {
       if (callback) callback(pklInfo);
     })
     .withFailureHandler(function(err) {
-      console.error('Gagal cek PKL:', err);
+      console.error('[PKL] Gagal cek PKL:', err);
       initPKLSiswa(null);
       if (callback) callback(null);
     })
     .getPKLByNIS(nis);
 }
 
-// ... (fungsi-fungsi PKL presensi, jurnal, dsb — TETAP SAMA dengan versi lama)
+// =============================================
+// SISWA PKL — Presensi
+// =============================================
 
 function loadPKLPresensiPage() {
   if (!currentUser || !currentUser.student) return;
@@ -671,23 +709,28 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
 
   container.innerHTML = infoCard + statusCard + formCard + riwayatCard;
 
-  var nis = String(currentUser.student.NIS).trim();
   google.script.run
     .withSuccessHandler(function(list) {
       renderPKLRiwayat(list);
     })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatAbsenPKL(nis);
+    .getRiwayatAbsenPKL(nis());
+}
+
+function nis() {
+  if (!currentUser || !currentUser.student) return '';
+  return String(currentUser.student.NIS).trim();
 }
 
 function buildPKLAbsenForm(tipe) {
+  var radiusInfo = pklInfoSiswa ? pklInfoSiswa.Radius_Meter : 20;
   return '<div>' +
     '<div class="form-group">' +
       '<label><i class="fas fa-satellite"></i> Lokasi GPS</label>' +
       '<button type="button" class="btn btn-outline btn-sm" onclick="getPKLLocation()" id="btn-pkl-gps" style="width:100%;">' +
         '<i class="fas fa-location-dot"></i> Dapatkan Lokasi' +
       '</button>' +
-      '<div id="pkl-gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik untuk mendeteksi lokasi. Radius wajib ≤ ' + (pklInfoSiswa ? pklInfoSiswa.Radius_Meter : 20) + 'm.</div>' +
+      '<div id="pkl-gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik untuk mendeteksi lokasi. Radius wajib ≤ ' + radiusInfo + 'm.</div>' +
       '<input type="hidden" id="pkl_lat" value="">' +
       '<input type="hidden" id="pkl_lng" value="">' +
       '<input type="hidden" id="pkl_jarak" value="">' +
@@ -725,10 +768,10 @@ function getPKLLocation() {
       var R = 6371000;
       var dLat = (parseFloat(pklInfoSiswa.Latitude) - reading.lat) * Math.PI / 180;
       var dLon = (parseFloat(pklInfoSiswa.Longitude) - reading.lng) * Math.PI / 180;
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
               Math.cos(reading.lat * Math.PI / 180) * Math.cos(parseFloat(pklInfoSiswa.Latitude) * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       var jarak = Math.round(R * c);
 
       document.getElementById('pkl_lat').value = reading.lat;
@@ -751,7 +794,8 @@ function getPKLLocation() {
 
 function openPKLSelfieCapture() {
   if (!isDesktopDevice()) {
-    document.getElementById('pkl_selfie_input').click();
+    var input = document.getElementById('pkl_selfie_input');
+    if (input) input.click();
     return;
   }
   openPKLWebcamLive();
@@ -872,14 +916,13 @@ function submitPKLAbsen(tipe) {
     Swal.fire({
       icon: 'info',
       title: 'GPS Belum Diambil',
-      html: 'Ambil lokasi dulu dengan tombol <strong>Dapatkan Lokasi</strong>.<br><br>' +
-            'Kalau GPS tidak bisa, isi keterangan alasan.',
+      html: 'Ambil lokasi dulu dengan tombol <strong>Dapatkan Lokasi</strong>.<br><br>Kalau GPS tidak bisa, isi keterangan alasan.',
       confirmButtonColor: '#10b981'
     });
     return;
   }
 
-  var nis = String(currentUser.student.NIS).trim();
+  var nisClean = nis();
   var btn = document.getElementById('btn-submit-pkl');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
 
@@ -895,7 +938,7 @@ function submitPKLAbsen(tipe) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absen ' + (tipe === 'masuk' ? 'Masuk' : 'Pulang'); }
       Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
     })
-    .submitAbsenPKL(nis, tipe, lat, lng, jarak, selfie, ket);
+    .submitAbsenPKL(nisClean, tipe, lat, lng, jarak, selfie, ket);
 }
 
 function renderPKLRiwayat(list) {
@@ -911,7 +954,9 @@ function renderPKLRiwayat(list) {
     '<thead><tr><th>Tanggal</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Approval</th><th>Ket</th></tr></thead><tbody>';
 
   list.forEach(function(a) {
-    var badge = a.Status_Approval === 'Approved' ? 'badge-approval-approved' : a.Status_Approval === 'Rejected' ? 'badge-approval-rejected' : 'badge-approval-pending';
+    var badge = a.Status_Approval === 'Approved' ? 'badge-approval-approved'
+              : a.Status_Approval === 'Rejected' ? 'badge-approval-rejected'
+              : 'badge-approval-pending';
     html += '<tr>' +
       '<td>' + (a.Tanggal || '-') + '</td>' +
       '<td>' + (a.Jam_Masuk || '-') + '</td>' +
@@ -926,9 +971,13 @@ function renderPKLRiwayat(list) {
   cont.innerHTML = html;
 }
 
+// =============================================
+// SISWA PKL — Jurnal
+// =============================================
+
 function loadPKLJurnalPage() {
   if (!currentUser || !currentUser.student) return;
-  var nis = String(currentUser.student.NIS).trim();
+  var nisClean = nis();
 
   var container = document.getElementById('pkl-jurnal-content');
   if (!container) return;
@@ -942,7 +991,7 @@ function loadPKLJurnalPage() {
     .withFailureHandler(function(err) {
       container.innerHTML = '<div class="card" style="background:#fee2e2;padding:18px;">' + err.message + '</div>';
     })
-    .cekJurnalPKLHariIni(nis);
+    .cekJurnalPKLHariIni(nisClean);
 }
 
 function renderPKLJurnalPage(container, jurnalHariIni) {
@@ -991,9 +1040,7 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
         '<div class="form-group">' +
           '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini — Deskripsikan minimal 10 kata</label>' +
           '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli mesin, membersihkan karburator, dan melakukan tune up ringan bersama pembimbing."></textarea>' +
-          '<div id="pkl_jurnal_word_count" style="font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;">' +
-            '0 kata — minimal 10 kata' +
-          '</div>' +
+          '<div id="pkl_jurnal_word_count" style="font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;">0 kata — minimal 10 kata</div>' +
         '</div>' +
         '<div class="form-group">' +
           '<label><i class="fas fa-camera"></i> Foto Dokumentasi (opsional)</label>' +
@@ -1036,15 +1083,15 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
     });
   }
 
-  var nis = String(currentUser.student.NIS).trim();
   google.script.run
     .withSuccessHandler(function(list) { renderPKLJurnalRiwayat(list); })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatJurnalPKL(nis);
+    .getRiwayatJurnalPKL(nis());
 }
 
 function openPKLJurnalFileDialog() {
-  document.getElementById('pkl_jurnal_foto_input').click();
+  var el = document.getElementById('pkl_jurnal_foto_input');
+  if (el) el.click();
 }
 
 function handlePKLJurnalFoto(input) {
@@ -1086,13 +1133,12 @@ function submitPKLJurnal() {
     Swal.fire({
       icon: 'warning',
       title: 'Deskripsi Terlalu Pendek',
-      html: 'Jurnal minimal <strong>10 kata</strong>.<br>' +
-            'Saat ini baru <strong>' + jumlahKata + ' kata</strong>.'
+      html: 'Jurnal minimal <strong>10 kata</strong>.<br>Saat ini baru <strong>' + jumlahKata + ' kata</strong>.'
     });
     return;
   }
 
-  var nis = String(currentUser.student.NIS).trim();
+  var nisClean = nis();
   var btn = document.getElementById('btn-submit-jurnal');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
 
@@ -1108,7 +1154,7 @@ function submitPKLJurnal() {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Jurnal'; }
       Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
     })
-    .submitJurnalPKL(nis, kegiatan, foto);
+    .submitJurnalPKL(nisClean, kegiatan, foto);
 }
 
 function renderPKLJurnalRiwayat(list) {
@@ -1128,9 +1174,11 @@ function renderPKLJurnalRiwayat(list) {
     var badgeSekolah = j.Approval_Sekolah === 'Approved' ? 'badge-approval-approved'
                       : j.Approval_Sekolah === 'Rejected' ? 'badge-approval-rejected'
                       : 'badge-approval-pending';
-    var finalBadge = j.Status_Final === 'Approved' ? '<span class="badge-approval-approved" style="font-size:10px;padding:2px 8px;">✓ Approved</span>'
-                    : j.Status_Final === 'Rejected' ? '<span class="badge-approval-rejected" style="font-size:10px;padding:2px 8px;">✗ Rejected</span>'
-                    : '<span class="badge-approval-pending" style="font-size:10px;padding:2px 8px;">⏳ ' + (j.Status_Final || 'Pending') + '</span>';
+    var finalBadge = j.Status_Final === 'Approved'
+      ? '<span class="badge-approval-approved" style="font-size:10px;padding:2px 8px;">✓ Approved</span>'
+      : j.Status_Final === 'Rejected'
+        ? '<span class="badge-approval-rejected" style="font-size:10px;padding:2px 8px;">✗ Rejected</span>'
+        : '<span class="badge-approval-pending" style="font-size:10px;padding:2px 8px;">⏳ ' + (j.Status_Final || 'Pending') + '</span>';
 
     html +=
       '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">' +
