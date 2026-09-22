@@ -314,45 +314,67 @@ function useCurrentLocationForDUDI() {
 function loadAssignPKL() {
   showLoading();
   google.script.run
-    .withSuccessHandler(function(list) {
+    .withSuccessHandler(function(bundle) {
       hideLoading();
-      pklCache = Array.isArray(list) ? list : [];
+      // bundle = { pkl: [...], siswa: {...}, dudi: [...], gtk: [...] }
+      pklCache = Array.isArray(bundle.pkl) ? bundle.pkl : [];
+      siswaXIICache = (bundle.siswa && bundle.siswa.siswa) ? bundle.siswa.siswa : [];
+      dudiListCache = Array.isArray(bundle.dudi) ? bundle.dudi : [];
+      gtkCache = Array.isArray(bundle.gtk) ? bundle.gtk : [];
+
       renderPKLTable();
-      loadDropdownsPKL();
+      populateDropdownPKLFromBundle();
     })
     .withFailureHandler(function(err) {
       hideLoading();
       Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     })
-    .getAllPKL();
+    .getAssignPKLBundle();
 }
 
-function loadDropdownsPKL() {
-  // ─── 1. Siswa XII + filter kelas ───
-  google.script.run
-    .withSuccessHandler(function(res) {
-      var siswaList = (res && res.siswa) ? res.siswa : [];
-      var kelasList = (res && res.kelasList) ? res.kelasList : [];
+function populateDropdownPKLFromBundle() {
+  // Filter kelas
+  var kelasList = {};
+  siswaXIICache.forEach(function(s) { if (s.Nama_Kelas) kelasList[s.Nama_Kelas] = true; });
+  var selKelas = document.getElementById('pkl_filter_kelas');
+  if (selKelas) {
+    selKelas.innerHTML = '<option value="">-- Semua Kelas XII --</option>';
+    Object.keys(kelasList).sort().forEach(function(k) {
+      var opt = document.createElement('option');
+      opt.value = k; opt.textContent = k;
+      selKelas.appendChild(opt);
+    });
+  }
+  populateDropdownSiswa(siswaXIICache);
 
-      siswaXIICache = siswaList;
+  // DUDI
+  var selDudi = document.getElementById('pkl_dudi');
+  if (selDudi) {
+    selDudi.innerHTML = '<option value="">-- Pilih DUDI --</option>';
+    dudiListCache.forEach(function(d) {
+      var opt = document.createElement('option');
+      opt.value = d.ID_DUDI;
+      opt.textContent = d.Nama_DUDI + ' (' + d.ID_DUDI + ')';
+      selDudi.appendChild(opt);
+    });
+  }
 
-      var selKelas = document.getElementById('pkl_filter_kelas');
-      if (selKelas) {
-        selKelas.innerHTML = '<option value="">-- Semua Kelas XII --</option>';
-        kelasList.forEach(function(k) {
-          var opt = document.createElement('option');
-          opt.value = k;
-          opt.textContent = k;
-          selKelas.appendChild(opt);
-        });
-      }
-
-      populateDropdownSiswa(siswaList);
-    })
-    .withFailureHandler(function(err) {
-      console.error('[PKL] Gagal load siswa XII:', err);
-    })
-    .getSiswaXII();
+  // GTK
+  var selPemb = document.getElementById('pkl_pembimbing');
+  if (selPemb) {
+    if (gtkCache.length === 0) {
+      selPemb.innerHTML = '<option value="">-- Tidak ada guru --</option>';
+    } else {
+      selPemb.innerHTML = '<option value="">-- Pilih Guru Pembimbing (' + gtkCache.length + ' guru) --</option>';
+      gtkCache.forEach(function(g) {
+        var opt = document.createElement('option');
+        opt.value = g.NBM;
+        opt.textContent = g.Nama_GTK + ' (NBM: ' + g.NBM + ')';
+        selPemb.appendChild(opt);
+      });
+    }
+  }
+}
 
   // ─── 2. DUDI ───
   google.script.run
