@@ -1,58 +1,7 @@
-window.logoutPembimbing = function() {
-  try { localStorage.removeItem('mutusuka_pembimbing'); } catch (e) {}
-  try { pembimbingState = { kodeAkses: null, token: null, data: null }; } catch (e) {}
-  var al = document.getElementById('app-layout'); if (al) al.classList.add('hidden');
-  var sb = document.querySelector('.sidebar'); if (sb) sb.classList.remove('hidden');
-  var tb = document.querySelector('.topbar'); if (tb) tb.classList.remove('hidden');
-  var lp = document.getElementById('login-page'); if (lp) lp.classList.remove('hidden');
-  var ld = document.getElementById('login-dudi-page'); if (ld) ld.classList.add('hidden');
-  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
-};
-
-// ⭐⭐⭐ WAJIB DI PALING ATAS — biar fungsi ini pasti ke-register
-window.logoutPembimbing = function() {
-  try {
-    localStorage.removeItem('mutusuka_pembimbing');
-  } catch (e) {}
-
-  try {
-    if (typeof pembimbingState !== 'undefined') {
-      pembimbingState = { kodeAkses: null, token: null, data: null };
-    }
-  } catch (e) {}
-
-  // Sembunyikan dashboard pembimbing
-  var appLayout = document.getElementById('app-layout');
-  if (appLayout) appLayout.classList.add('hidden');
-
-  // Balikkan sidebar + topbar (biar login admin normal)
-  var sidebar = document.querySelector('.sidebar');
-  var topbar = document.querySelector('.topbar');
-  if (sidebar) sidebar.classList.remove('hidden');
-  if (topbar) topbar.classList.remove('hidden');
-
-  // Tampilkan login page
-  var loginPage = document.getElementById('login-page');
-  if (loginPage) loginPage.classList.remove('hidden');
-
-  var loginDudi = document.getElementById('login-dudi-page');
-  if (loginDudi) loginDudi.classList.add('hidden');
-
-  // Bersihkan hash
-  if (window.location.hash) {
-    history.replaceState(null, '', window.location.pathname);
-  }
-
-  // Kembali ke tab login admin
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
-
-  console.log('[Pembimbing] Logout berhasil');
-};
-
 // =============================================
-// PEMBIMBING DUDI — Frontend
+// PEMBIMBING DUDI — Frontend (FINAL)
 // File: js-pembimbing.js
+// Versi: v2026-09-23-clean
 // =============================================
 
 var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
@@ -63,8 +12,7 @@ var pembimbingState = { kodeAkses: null, token: null, data: null };
 // ═══════════════════════════════════════════════
 // SESSION MANAGEMENT
 // ═══════════════════════════════════════════════
-// ⭐ Alias biar aman kalau ada typo di tempat lain
-window.logoutPembimbing = logoutPembimbing;
+
 function simpanSessionPembimbing(data) {
   localStorage.setItem(PEMBIMBING_STORAGE_KEY, JSON.stringify({
     kode: data.dudi.Kode_Akses,
@@ -156,7 +104,7 @@ function cekHashPembimbing() {
 }
 
 // ═══════════════════════════════════════════════
-// MASUK DASHBOARD
+// MASUK & KELUAR DASHBOARD
 // ═══════════════════════════════════════════════
 
 function masukKeDashboardPembimbing(kode, token) {
@@ -201,6 +149,73 @@ function masukKeDashboardPembimbing(kode, token) {
     .getDashboardPembimbingSecure(kode, token);
 }
 
+function logoutPembimbing() {
+  try {
+    localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
+  } catch (e) {}
+
+  pembimbingState = { kodeAkses: null, token: null, data: null };
+
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.add('hidden');
+
+  var sidebar = document.querySelector('.sidebar');
+  var topbar = document.querySelector('.topbar');
+  if (sidebar) sidebar.classList.remove('hidden');
+  if (topbar) topbar.classList.remove('hidden');
+
+  var loginPage = document.getElementById('login-page');
+  if (loginPage) loginPage.classList.remove('hidden');
+
+  var loginDudi = document.getElementById('login-dudi-page');
+  if (loginDudi) loginDudi.classList.add('hidden');
+
+  if (window.location.hash) {
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+}
+
+// ⭐ Pindah ke login utama TANPA hapus session pembimbing
+function pindahKeLoginUtama() {
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.add('hidden');
+
+  var sidebar = document.querySelector('.sidebar');
+  var topbar = document.querySelector('.topbar');
+  if (sidebar) sidebar.classList.remove('hidden');
+  if (topbar) topbar.classList.remove('hidden');
+
+  var loginPage = document.getElementById('login-page');
+  if (loginPage) loginPage.classList.remove('hidden');
+
+  var loginDudi = document.getElementById('login-dudi-page');
+  if (loginDudi) loginDudi.classList.add('hidden');
+
+  if (window.location.hash) {
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+}
+
+// ⭐ Register ke window (biar onclick="logoutPembimbing()" di HTML selalu bisa akses)
+window.logoutPembimbing = logoutPembimbing;
+window.pindahKeLoginUtama = pindahKeLoginUtama;
+
+function renderPembimbingError(msg) {
+  var c = document.getElementById('pembimbing-content');
+  if (!c) return;
+  c.innerHTML =
+    '<div class="card" style="text-align:center;padding:40px;background:#fef2f2;border:1px solid #fecaca;">' +
+      '<i class="fas fa-exclamation-triangle" style="font-size:3em;color:#dc2626;margin-bottom:12px;"></i>' +
+      '<h3 style="color:#991b1b;font-size:18px;font-weight:800;">Akses Ditolak</h3>' +
+      '<p style="color:#7f1d1d;font-size:13px;margin-top:8px;">' + escapeHtml(msg) + '</p>' +
+      '<button class="btn btn-outline" onclick="logoutPembimbing()" style="margin-top:16px;">Kembali</button>' +
+    '</div>';
+}
+
 // ═══════════════════════════════════════════════
 // RENDER DASHBOARD
 // ═══════════════════════════════════════════════
@@ -213,7 +228,6 @@ function renderPembimbingDashboard(data) {
 
   var html = '';
 
-  // Header DUDI
   html +=
     '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
       '<div style="font-size:18px;font-weight:800;color:var(--primary-dark);"><i class="fas fa-building"></i> ' + escapeHtml(dudi.Nama_DUDI) + '</div>' +
@@ -223,7 +237,6 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
-  // Stat cards
   html +=
     '<div class="stat-grid" style="margin-bottom:18px;">' +
       '<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);">' +
@@ -248,7 +261,6 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
-  // Tab navigation
   html +=
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen">' +
@@ -260,12 +272,14 @@ function renderPembimbingDashboard(data) {
       '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'siswa\')" id="tab-pemb-siswa">' +
         '<i class="fas fa-users"></i> Daftar Siswa' +
       '</button>' +
-      '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()" style="margin-left:auto;">' +
+      '<button type="button" class="btn btn-outline btn-sm" onclick="pindahKeLoginUtama()" style="margin-left:auto;">' +
+        '<i class="fas fa-exchange-alt"></i> Login Admin/Guru' +
+      '</button>' +
+      '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()">' +
         '<i class="fas fa-sign-out-alt"></i> Keluar' +
       '</button>' +
     '</div>';
 
-  // Tab content container
   html += '<div id="pembimbing-tab-content"></div>';
 
   c.innerHTML = html;
