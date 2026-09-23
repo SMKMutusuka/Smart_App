@@ -1,7 +1,9 @@
 // =============================================
 // MODUL PKL — Frontend FINAL
 // File: js-pkl.js
-// Versi: v2026-09-22d (FIX orphaned code)
+// Versi: v2026-09-23-clean
+// ⭐ FIX: kirimLinkPembimbingWA yang rusak
+// ⭐ Pakai helper bukaWhatsApp() untuk WA Desktop
 // =============================================
 
 // ═══════════ STATE ═══════════
@@ -186,25 +188,57 @@ function copyLinkPembimbing(kode) {
   }
 }
 
-function kirimLinkPembimbingWA(idDudi)
+function kirimLinkPembimbingWA(idDudi) {
+  var d = dudiCache.find(function(x) { return String(x.ID_DUDI) === String(idDudi); });
+  if (!d) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Data DUDI tidak ditemukan.' });
+    return;
+  }
 
-  var waMeUrl = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
-  var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (!d.WA_Pembimbing) {
+    Swal.fire({ icon: 'warning', title: 'WA Kosong', text: 'Nomor WA pembimbing belum diisi. Edit DUDI dulu.' });
+    return;
+  }
 
-  if (isMobile) {
-    window.open(waMeUrl, '_blank');
-  } else {
+  if (!d.PIN_Pembimbing) {
     Swal.fire({
-      title: 'Kirim Link ke WA?',
-      html: 'Pesan akan dikirim ke <strong>' + d.Nama_Pembimbing + '</strong><br>(' + d.WA_Pembimbing + ')',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#25D366'
-    }).then(function(r) {
-      if (r.isConfirmed) window.open(waMeUrl, '_blank');
+      icon: 'warning',
+      title: 'PIN Belum Ada',
+      html: 'DUDI ini belum punya PIN.<br>Silakan <strong>Edit DUDI</strong> dan simpan ulang untuk auto-generate PIN.'
     });
+    return;
+  }
+
+  var link = location.origin + location.pathname + '#pembimbing=' + encodeURIComponent(d.Kode_Akses);
+
+  var pesan =
+    "Assalamu'alaikum Bapak/Ibu " + (d.Nama_Pembimbing || 'Pembimbing') + ",\n\n" +
+    "Anda ditunjuk sebagai Pembimbing PKL siswa SMK Muhammadiyah 1 Surakarta di:\n" +
+    "🏢 *" + d.Nama_DUDI + "*\n\n" +
+    "Untuk mengakses Dashboard Pembimbing, gunakan informasi berikut:\n\n" +
+    "🔗 *Link Dashboard:*\n" + link + "\n\n" +
+    "🔑 *Kode Akses:* " + d.Kode_Akses + "\n" +
+    "🔒 *PIN:* " + d.PIN_Pembimbing + "\n\n" +
+    "Melalui dashboard ini Bapak/Ibu dapat:\n" +
+    "• Melihat daftar siswa PKL di DUDI\n" +
+    "• Menyetujui (approve) absensi harian siswa\n" +
+    "• Menyetujui (approve) jurnal kegiatan siswa\n\n" +
+    "⚠️ *Penting:* Jangan bagikan Kode Akses & PIN kepada siapa pun.\n\n" +
+    "Simpan pesan ini. Terima kasih.\n" +
+    "- SMK Muhammadiyah 1 Surakarta";
+
+  // ⭐ Pakai helper terpusat — otomatis coba WA Desktop di PC
+  if (typeof bukaWhatsApp === 'function') {
+    bukaWhatsApp(d.WA_Pembimbing, pesan, d.Nama_Pembimbing);
+  } else {
+    // Fallback kalau helper belum ada
+    var nomor = (typeof formatWaNumber === 'function') ? formatWaNumber(d.WA_Pembimbing) : null;
+    if (!nomor) {
+      Swal.fire({ icon: 'error', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit.' });
+      return;
+    }
+    var waMeUrl = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesan);
+    window.open(waMeUrl, '_blank');
   }
 }
 
@@ -538,6 +572,15 @@ function checkPKLSiswaAktif(nis, callback) {
 }
 
 // =============================================
+// SISWA PKL — Helper
+// =============================================
+
+function nis() {
+  if (!currentUser || !currentUser.student) return '';
+  return String(currentUser.student.NIS).trim();
+}
+
+// =============================================
 // SISWA PKL — Presensi
 // =============================================
 
@@ -644,12 +687,7 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
       renderPKLRiwayat(list);
     })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatAbsenPKL(nisClean);
-}
-
-function nis() {
-  if (!currentUser || !currentUser.student) return '';
-  return String(currentUser.student.NIS).trim();
+    .getRiwayatAbsenPKL(nis());
 }
 
 function buildPKLAbsenForm(tipe) {
@@ -1016,7 +1054,7 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
   google.script.run
     .withSuccessHandler(function(list) { renderPKLJurnalRiwayat(list); })
     .withFailureHandler(function(err) { console.error(err); })
-    .getRiwayatJurnalPKL(nisClean);
+    .getRiwayatJurnalPKL(nis());
 }
 
 function openPKLJurnalFileDialog() {
