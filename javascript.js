@@ -531,10 +531,29 @@ function setupRoleUI(role) {
 
   [mAdmin, mGtk, mSiswa].forEach(function(m) { if (m) m.classList.add('hidden'); });
 
-  if (role === 'Admin') {
+  if (role === 'Admin' || role === 'AdminPKL') {
     mAdmin.classList.remove('hidden');
-    roleTitle.innerHTML = '<i class="fas fa-user-shield"></i> Admin Panel';
-    showPage('page-dashboard-admin', document.querySelector('[data-page="dashboard-admin"]'));
+
+    if (role === 'AdminPKL') {
+      // ⭐ Sembunyikan menu yang BUKAN PKL
+      roleTitle.innerHTML = '<i class="fas fa-user-tie"></i> Admin PKL';
+      var fullMenuItems = mAdmin.querySelectorAll('.menu-item-admin-full');
+      fullMenuItems.forEach(function(li) { li.classList.add('hidden'); });
+
+      // Tampilkan menu PKL
+      var pklMenuItems = mAdmin.querySelectorAll('.menu-item-admin-pkl');
+      pklMenuItems.forEach(function(li) { li.classList.remove('hidden'); });
+
+      // Redirect ke Assign PKL (karena Dashboard tidak tersedia)
+      showPage('page-pkl-assign', document.querySelector('[data-page="pkl-assign"]'));
+    } else {
+      // Admin penuh — tampilkan semua
+      roleTitle.innerHTML = '<i class="fas fa-user-shield"></i> Admin Panel';
+      var allItems = mAdmin.querySelectorAll('li');
+      allItems.forEach(function(li) { li.classList.remove('hidden'); });
+
+      showPage('page-dashboard-admin', document.querySelector('[data-page="dashboard-admin"]'));
+    }
   } else if (role === 'Guru' || role === 'Tendik') {
     mGtk.classList.remove('hidden');
     roleTitle.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Panel GTK';
