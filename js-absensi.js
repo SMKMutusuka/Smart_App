@@ -622,31 +622,74 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
                      approvalStatus === 'Approved' ? '✅ Disetujui' :
                      '❌ Ditolak';
 
-  container.innerHTML = '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
-    '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
-  '</div>' +
-  '<div class="card" style="text-align:center;padding:36px 18px;">' +
-    '<div style="font-size:3.5em;color:var(--primary);margin-bottom:12px;">' +
-      '<i class="fas fa-lock"></i>' +
-    '</div>' +
-    '<h3 style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:6px;">Absensi Hari Ini Terkunci</h3>' +
-    '<p style="font-size:13px;color:var(--text-muted);line-height:1.5;max-width:440px;margin:0 auto 20px;">' +
-      'Absensi Anda untuk hari ini (<strong>' + formatDateDisplay(todayStr) + '</strong>) sudah tercatat di sistem dan dikunci.' +
-    '</p>' +
-    '<div style="display:inline-block;padding:16px 24px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;text-align:left;min-width:280px;box-shadow:var(--shadow-sm);">' +
-      '<div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Status Kehadiran Anda</div>' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">' +
-        '<span class="badge-status-table ' + badgeClass + '" style="font-size:13px;padding:6px 16px;"><i class="fas fa-check-circle"></i> ' + existing.Status + '</span>' +
-        '<span class="' + (approvalMap[approvalStatus] || 'badge-approval-approved') + '" style="font-size:11px;padding:4px 14px;">' + approvalText + '</span>' +
-        (existing.Link_Surat || existing.Link ? '<a href="' + escapeHtml(existing.Link_Surat || existing.Link) + '" target="_blank" class="link-surat"><i class="fas fa-file-alt"></i> Surat</a>' : '') +
-        (existing.Selfie_Url ? '<a href="' + escapeHtml(existing.Selfie_Url) + '" target="_blank" class="link-surat"><i class="fas fa-camera"></i> Selfie</a>' : '') +
-        (existing.Jarak_Meter ? '<span style="font-size:11px;color:var(--text-muted);">📏 ' + existing.Jarak_Meter + 'm</span>' : '') +
+  var sudahPulang = existing.Waktu_Pulang && String(existing.Waktu_Pulang).trim() !== '';
+  var bisaPulang = existing.Status === 'Hadir' && !sudahPulang;
+
+  // Kartu info absen masuk
+  var infoCard =
+    '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
+      '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
+    '</div>';
+
+  // Kartu status masuk
+  var statusMasukCard =
+    '<div class="card" style="text-align:center;padding:24px 18px;margin-bottom:16px;">' +
+      '<div style="font-size:2.5em;color:var(--primary);margin-bottom:8px;">' +
+        '<i class="fas fa-check-circle"></i>' +
       '</div>' +
-      '<div style="font-size:12px;color:#475569;border-top:1px dashed #e2e8f0;padding-top:8px;margin-top:6px;">' +
-        '<strong>Keterangan:</strong> ' + (escapeHtml(existing.Keterangan) || 'Tidak ada catatan') +
+      '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px;">Absen Masuk Tercatat</h3>' +
+      '<p style="font-size:12.5px;color:var(--text-muted);line-height:1.5;max-width:440px;margin:0 auto 16px;">' +
+        'Absensi masuk Anda hari ini sudah tercatat di sistem.' +
+      '</p>' +
+      '<div style="display:inline-block;padding:14px 22px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;text-align:left;min-width:280px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">' +
+          '<span class="badge-status-table ' + badgeClass + '" style="font-size:13px;padding:6px 16px;"><i class="fas fa-check-circle"></i> ' + existing.Status + '</span>' +
+          '<span class="' + (approvalMap[approvalStatus] || 'badge-approval-approved') + '" style="font-size:11px;padding:4px 14px;">' + approvalText + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#475569;margin-top:8px;">' +
+          '<strong>Jam Masuk:</strong> ' + (existing.Waktu_Masuk || '-') +
+        '</div>' +
+        (existing.Jarak_Meter ? '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📏 ' + existing.Jarak_Meter + 'm dari sekolah</div>' : '') +
+        (existing.Keterangan ? '<div style="font-size:11px;color:#475569;border-top:1px dashed #e2e8f0;padding-top:6px;margin-top:6px;"><strong>Ket:</strong> ' + escapeHtml(existing.Keterangan) + '</div>' : '') +
       '</div>' +
-    '</div>' +
-  '</div>';
+    '</div>';
+
+  var pulangCard = '';
+
+  if (bisaPulang) {
+    // ⭐ Siswa sudah Hadir, belum Pulang → tombol Absen Pulang
+    pulangCard =
+      '<div class="card" style="text-align:center;padding:24px 18px;">' +
+        '<div style="font-size:2.5em;color:#f59e0b;margin-bottom:8px;">' +
+          '<i class="fas fa-sign-out-alt"></i>' +
+        '</div>' +
+        '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px;">Absen Pulang</h3>' +
+        '<p style="font-size:12.5px;color:var(--text-muted);line-height:1.5;max-width:440px;margin:0 auto 16px;">' +
+          'Klik tombol di bawah untuk mencatat waktu pulang Anda.<br>' +
+          '<span style="color:#10b981;font-weight:700;">Tidak perlu selfie.</span>' +
+        '</p>' +
+        '<button type="button" class="btn btn-primary" onclick="konfirmAbsenPulang()" style="min-height:46px;padding:0 32px;">' +
+          '<i class="fas fa-sign-out-alt"></i> Absen Pulang Sekarang' +
+        '</button>' +
+      '</div>';
+  } else if (sudahPulang) {
+    // ⭐ Sudah absen pulang → tampilkan info
+    pulangCard =
+      '<div class="card" style="text-align:center;padding:24px 18px;background:#f0fdf4;border:1px solid var(--primary-border);">' +
+        '<div style="font-size:2.5em;color:var(--primary);margin-bottom:8px;">' +
+          '<i class="fas fa-check-double"></i>' +
+        '</div>' +
+        '<h3 style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:6px;">Absen Pulang Tercatat</h3>' +
+        '<p style="font-size:13px;color:#065f46;line-height:1.5;">' +
+          'Jam Pulang: <strong style="font-size:16px;">' + String(existing.Waktu_Pulang) + '</strong>' +
+        '</p>' +
+        '<p style="font-size:12px;color:var(--text-muted);margin-top:8px;">' +
+          'Terima kasih sudah disiplin hari ini. 🎉' +
+        '</p>' +
+      '</div>';
+  }
+
+  container.innerHTML = infoCard + statusMasukCard + pulangCard;
 }
 
 function renderStudentAbsenForm(todayStr) {
