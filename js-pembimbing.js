@@ -12,6 +12,36 @@ var pembimbingState = { kodeAkses: null, token: null, data: null };
 // SESSION MANAGEMENT
 // ═══════════════════════════════════════════════
 
+// ⭐ Logout Pembimbing — pindah ke paling atas biar pasti ke-register
+function logoutPembimbing() {
+  try {
+    localStorage.removeItem('mutusuka_pembimbing');
+  } catch (e) {}
+
+  if (typeof pembimbingState !== 'undefined') {
+    pembimbingState = { kodeAkses: null, token: null, data: null };
+  }
+
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.add('hidden');
+
+  var sidebar = document.querySelector('.sidebar');
+  var topbar = document.querySelector('.topbar');
+  if (sidebar) sidebar.classList.remove('hidden');
+  if (topbar) topbar.classList.remove('hidden');
+
+  var loginPage = document.getElementById('login-page');
+  if (loginPage) loginPage.classList.remove('hidden');
+
+  var loginDudi = document.getElementById('login-dudi-page');
+  if (loginDudi) loginDudi.classList.add('hidden');
+
+  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+}
+
+// ⭐ Alias biar aman kalau ada typo di tempat lain
+window.logoutPembimbing = logoutPembimbing;
 function simpanSessionPembimbing(data) {
   localStorage.setItem(PEMBIMBING_STORAGE_KEY, JSON.stringify({
     kode: data.dudi.Kode_Akses,
