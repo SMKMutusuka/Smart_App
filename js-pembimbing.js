@@ -110,10 +110,30 @@ function masukKeDashboardPembimbing(kode, token) {
   pembimbingState.kodeAkses = kode;
   pembimbingState.token = token;
 
-  document.getElementById('login-page').classList.add('hidden');
-  document.getElementById('app-layout').classList.add('hidden');
-  document.getElementById('page-pembimbing').classList.remove('hidden');
+  // ⭐ Sembunyikan semua halaman login
+  var loginPage = document.getElementById('login-page');
+  var loginDudi = document.getElementById('login-dudi-page');
+  if (loginPage) loginPage.classList.add('hidden');
+  if (loginDudi) loginDudi.classList.add('hidden');
 
+  // ⭐ TAMPILKAN app-layout (induk dari page-pembimbing)
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.remove('hidden');
+
+  // ⭐ Sembunyikan sidebar + topbar (biar tidak ada menu admin)
+  var sidebar = document.querySelector('.sidebar');
+  var topbar = document.querySelector('.topbar');
+  if (sidebar) sidebar.classList.add('hidden');
+  if (topbar) topbar.classList.add('hidden');
+
+  // ⭐ Sembunyikan SEMUA .page, tampilkan hanya page-pembimbing
+  document.querySelectorAll('.page').forEach(function(p) {
+    p.classList.add('hidden');
+  });
+  var pagePembimbing = document.getElementById('page-pembimbing');
+  if (pagePembimbing) pagePembimbing.classList.remove('hidden');
+
+  // ⭐ Load data dashboard
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
@@ -131,27 +151,6 @@ function masukKeDashboardPembimbing(kode, token) {
       renderPembimbingError(err.message);
     })
     .getDashboardPembimbingSecure(kode, token);
-}
-
-function logoutPembimbing() {
-  localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-  pembimbingState = { kodeAkses: null, token: null, data: null };
-  document.getElementById('page-pembimbing').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
-  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
-}
-
-function renderPembimbingError(msg) {
-  var c = document.getElementById('pembimbing-content');
-  if (!c) return;
-  c.innerHTML =
-    '<div class="card" style="text-align:center;padding:40px;background:#fef2f2;border:1px solid #fecaca;">' +
-      '<i class="fas fa-exclamation-triangle" style="font-size:3em;color:#dc2626;margin-bottom:12px;"></i>' +
-      '<h3 style="color:#991b1b;font-size:18px;font-weight:800;">Akses Ditolak</h3>' +
-      '<p style="color:#7f1d1d;font-size:13px;margin-top:8px;">' + escapeHtml(msg) + '</p>' +
-      '<button class="btn btn-outline" onclick="logoutPembimbing()" style="margin-top:16px;">Kembali</button>' +
-    '</div>';
 }
 
 // ═══════════════════════════════════════════════
