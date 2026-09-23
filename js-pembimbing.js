@@ -1,321 +1,538 @@
 // =============================================
-// PEMBIMBING DUDI — Frontend
+// MODUL PEMBIMBING — Backend FINAL
+// File: pembimbing.gs
+// ✅ FIX: handle Date object untuk kolom Tanggal
 // =============================================
-var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
-var SESSION_DAYS = 7;
 
-var pembimbingState = { kodeAkses: null, token: null, data: null };
+var SHEET_ABSEN_PKL_PEMB = 'Absen_PKL';
+var SHEET_JURNAL_PKL_PEMB = 'Jurnal_PKL';
+var GRACE_PERIODE_PKL_HARI = 7;
 
-function simpanSessionPembimbing(data) {
-  localStorage.setItem(PEMBIMBING_STORAGE_KEY, JSON.stringify({
-    kode: data.dudi.Kode_Akses,
-    token: data.token,
-    namaPembimbing: data.dudi.Nama_Pembimbing,
-    namaDUDI: data.dudi.Nama_DUDI,
-    exp: Date.now() + (SESSION_DAYS * 24 * 60 * 60 * 1000)
-  }));
+// ⭐ Helper: Normalisasi tanggal → "yyyy-MM-dd"
+function toISODate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'Asia/Jakarta', 'yyyy-MM-dd');
+  }
+  var s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
+  }
+  return s;
 }
 
-function ambilSessionPembimbing() {
-  try {
-    var s = JSON.parse(localStorage.getItem(PEMBIMBING_STORAGE_KEY) || 'null');
-    if (!s || !s.token || !s.kode) return null;
-    if (s.exp && Date.now() > s.exp) {
-      localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-      return null;
+// ⭐ Helper: Normalisasi waktu → "HH:mm:ss"
+function toHHmmss(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'Asia/Jakarta', 'HH:mm:ss');
+  }
+  var s = String(val).trim();
+  if (!s) return '';
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s.length === 5 ? s + ':00' : s;
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return Utilities.formatDate(d, 'Asia/Jakarta', 'HH:mm:ss');
+  }
+  return s;
+}
+
+// ═══════════════════════════════════════════════
+// DUDI — Kode & PIN
+// ═══════════════════════════════════════════════
+function getDUDIByKodeAkses(kode) {
+  if (!kode) throw new Error('Kode akses kosong.');
+  var list = getAllDUDI();
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].Kode_Akses || '').trim().toUpperCase() === String(kode).trim().toUpperCase()) {
+      return list[i];
     }
-    return s;
-  } catch (e) { return null; }
-}
-
-function handleLoginPembimbing(e) {
-  if (e) e.preventDefault();
-  var kode = document.getElementById('pemb_kode').value.trim().toUpperCase();
-  var pin = document.getElementById('pemb_pin').value.trim();
-  if (!kode || !pin) {
-    Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Kode akses & PIN wajib diisi.' });
-    return;
   }
-  showLoading();
-  google.script.run
-    .withSuccessHandler(function(res) {
-      hideLoading();
-      if (!res || !res.success) {
-        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Response tidak valid' });
-        return;
-      }
-      simpanSessionPembimbing(res);
-      if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-      masukKeDashboardPembimbing(res.dudi.Kode_Akses, res.token);
-    })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      Swal.fire({ icon: 'error', title: 'Login Gagal', text: err.message });
-    })
-    .loginPembimbing(kode, pin);
+  throw new Error('Kode akses tidak valid.');
 }
 
-function cobaAutoLoginPembimbing() {
-  var session = ambilSessionPembimbing();
-  if (!session) return false;
-  masukKeDashboardPembimbing(session.kode, session.token);
-  return true;
+function generatePin6Digit() {
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function cekHashPembimbing() {
-  var hash = window.location.hash || '';
-  var match = hash.match(/#pembimbing=([A-Za-z0-9]+)/);
-  if (!match) return false;
-
-  var kode = decodeURIComponent(match[1]).toUpperCase();
-
-  // ⭐ Tampilkan halaman login DUDI, bukan tab
-  if (typeof showLoginDUDI === 'function') {
-    showLoginDUDI();
+// ═══════════════════════════════════════════════
+// TOKEN — Stateless SHA256
+// ═══════════════════════════════════════════════
+function getOrCreateScriptSecret() {
+  var props = PropertiesService.getScriptProperties();
+  var secret = props.getProperty('PEMBIMBING_SECRET');
+  if (!secret) {
+    secret = Utilities.getUuid() + '-' + Utilities.getUuid();
+    props.setProperty('PEMBIMBING_SECRET', secret);
   }
+  return secret;
+}
 
-  var inpKode = document.getElementById('pemb_kode');
-  if (inpKode) inpKode.value = kode;
+function generatePembimbingToken(kode, pin) {
+  var raw = String(kode).toUpperCase() + '|' + String(pin) + '|' + getOrCreateScriptSecret();
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw);
+  return bytes.map(function(b) {
+    return ((b < 0 ? b + 256 : b).toString(16)).padStart(2, '0');
+  }).join('');
+}
 
-  var session = ambilSessionPembimbing();
-  if (session && session.kode === kode) {
-    cobaAutoLoginPembimbing();
-  } else {
-    setTimeout(function() {
-      var inpPin = document.getElementById('pemb_pin');
-      if (inpPin) inpPin.focus();
-    }, 300);
+function verifyPembimbingToken(kode, token) {
+  if (!kode || !token) return { valid: false, reason: 'Token tidak lengkap' };
+  try {
+    var dudi = getDUDIByKodeAkses(kode);
+    var pin = String(dudi.PIN_Pembimbing || '').trim();
+    if (!pin) return { valid: false, reason: 'PIN belum diatur' };
+
+    var expected = generatePembimbingToken(dudi.Kode_Akses, pin);
+    if (expected !== token) return { valid: false, reason: 'PIN sudah di-reset / token kadaluarsa' };
+
+    return { valid: true, dudi: dudi };
+  } catch (e) {
+    return { valid: false, reason: e.message };
   }
-  return true;
 }
 
-function masukKeDashboardPembimbing(kode, token) {
-  pembimbingState.kodeAkses = kode;
-  pembimbingState.token = token;
-  
-  document.getElementById('login-page').classList.add('hidden');
-  document.getElementById('app-layout').classList.add('hidden');
-  document.getElementById('page-pembimbing').classList.remove('hidden');
-  
-  showLoading();
-  google.script.run
-    .withSuccessHandler(function(data) {
-      hideLoading();
-      pembimbingState.data = data;
-      renderPembimbingDashboard(data);
-    })
-    .withFailureHandler(function(err) {
-      hideLoading();
-      if (err.message && err.message.indexOf('Sesi tidak valid') !== -1) {
-        logoutPembimbing();
-        Swal.fire({ icon: 'warning', title: 'Sesi Habis', text: 'Silakan login ulang dengan PIN.' });
-        return;
-      }
-      renderPembimbingError(err.message);
-    })
-    .getDashboardPembimbingSecure(kode, token);
+// ═══════════════════════════════════════════════
+// LOGIN PEMBIMBING DUDI
+// ═══════════════════════════════════════════════
+function loginPembimbing(kode, pin) {
+  if (!kode || !pin) throw new Error('Kode akses & PIN wajib diisi.');
+  var dudi = getDUDIByKodeAkses(kode);
+  var pinTersimpan = String(dudi.PIN_Pembimbing || '').trim();
+  if (!pinTersimpan) throw new Error('PIN belum diatur. Hubungi admin.');
+  if (String(pin).trim() !== pinTersimpan) throw new Error('PIN salah.');
+
+  return {
+    success: true,
+    token: generatePembimbingToken(dudi.Kode_Akses, pinTersimpan),
+    dudi: {
+      ID_DUDI: dudi.ID_DUDI,
+      Nama_DUDI: dudi.Nama_DUDI,
+      Nama_Pembimbing: dudi.Nama_Pembimbing || '',
+      Kode_Akses: dudi.Kode_Akses
+    }
+  };
 }
 
-function logoutPembimbing() {
-  localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-  pembimbingState = { kodeAkses: null, token: null, data: null };
-  document.getElementById('page-pembimbing').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
-  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-  switchLoginTab('admin');
+function resetPinPembimbing(kodeAkses) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Data_DUDI');
+  if (!sheet) throw new Error('Sheet Data_DUDI tidak ada.');
+  var values = sheet.getDataRange().getValues();
+  var headers = values[0];
+  var idxPin = headers.indexOf('PIN_Pembimbing');
+  var idxKode = headers.indexOf('Kode_Akses');
+  if (idxPin === -1) throw new Error('Kolom PIN_Pembimbing belum ada. Jalankan migrasi.');
+
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][idxKode]).trim().toUpperCase() === String(kodeAkses).trim().toUpperCase()) {
+      var pinBaru = generatePin6Digit();
+      sheet.getRange(i + 1, idxPin + 1).setValue(pinBaru);
+      return { success: true, pinBaru: pinBaru, message: 'PIN baru: ' + pinBaru };
+    }
+  }
+  throw new Error('DUDI tidak ditemukan.');
 }
 
-function renderPembimbingError(msg) {
-  var c = document.getElementById('pembimbing-content');
-  if (!c) return;
-  c.innerHTML =
-    '<div class="card" style="text-align:center;padding:40px;background:#fef2f2;border:1px solid #fecaca;">' +
-      '<i class="fas fa-exclamation-triangle" style="font-size:3em;color:#dc2626;margin-bottom:12px;"></i>' +
-      '<h3 style="color:#991b1b;font-size:18px;font-weight:800;">Akses Ditolak</h3>' +
-      '<p style="color:#7f1d1d;font-size:13px;margin-top:8px;">' + escapeHtml(msg) + '</p>' +
-      '<button class="btn btn-outline" onclick="logoutPembimbing()" style="margin-top:16px;">Kembali</button>' +
-    '</div>';
+// ═══════════════════════════════════════════════
+// DASHBOARD PEMBIMBING DUDI
+// ═══════════════════════════════════════════════
+function getDashboardPembimbingSecure(kode, token) {
+  var v = verifyPembimbingToken(kode, token);
+  if (!v.valid) throw new Error('Sesi tidak valid: ' + v.reason);
+  return getDashboardPembimbing(kode);
 }
 
-function renderPembimbingDashboard(data) {
-  var c = document.getElementById('pembimbing-content');
-  if (!c) return;
-  var dudi = data.dudi;
-  var stats = data.stats;
-  
-  var html = '';
-  html +=
-    '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
-      '<div style="font-size:18px;font-weight:800;color:var(--primary-dark);"><i class="fas fa-building"></i> ' + escapeHtml(dudi.Nama_DUDI) + '</div>' +
-      '<div style="font-size:12.5px;color:#065f46;margin-top:4px;">' +
-        '<i class="fas fa-user-tie"></i> ' + escapeHtml(dudi.Nama_Pembimbing || '-') +
-        ' | <i class="fas fa-users"></i> ' + data.totalSiswa + ' siswa binaan' +
-      '</div>' +
-    '</div>';
-  
-  html +=
-    '<div class="stat-grid" style="margin-bottom:18px;">' +
-      '<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);">' +
-        '<div class="stat-label">Absen Menunggu</div><div class="stat-value">' + stats.totalAbsenPending + '</div><i class="fas fa-clock stat-icon"></i></div>' +
-      '<div class="stat-card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">' +
-        '<div class="stat-label">Jurnal Menunggu</div><div class="stat-value">' + stats.totalJurnalPending + '</div><i class="fas fa-book stat-icon"></i></div>' +
-      '<div class="stat-card bg-hadir">' +
-        '<div class="stat-label">Approved Hari Ini</div><div class="stat-value">' + stats.absenApprovedHariIni + '</div><i class="fas fa-check-circle stat-icon"></i></div>' +
-      '<div class="stat-card" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">' +
-        '<div class="stat-label">Total Siswa</div><div class="stat-value">' + data.totalSiswa + '</div><i class="fas fa-user-graduate stat-icon"></i></div>' +
-    '</div>';
-  
-  html +=
-    '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
-      '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen"><i class="fas fa-fingerprint"></i> Approval Absen (' + stats.totalAbsenPending + ')</button>' +
-      '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'jurnal\')" id="tab-pemb-jurnal"><i class="fas fa-book"></i> Approval Jurnal (' + stats.totalJurnalPending + ')</button>' +
-      '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'siswa\')" id="tab-pemb-siswa"><i class="fas fa-users"></i> Daftar Siswa</button>' +
-      '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()" style="margin-left:auto;"><i class="fas fa-sign-out-alt"></i> Keluar</button>' +
-    '</div>';
-  
-  html += '<div id="pembimbing-tab-content"></div>';
-  c.innerHTML = html;
-  showPembimbingTab('absen');
-}
+function getDashboardPembimbing(kode) {
+  var dudi = getDUDIByKodeAkses(kode);
 
-function showPembimbingTab(tab) {
-  ['absen','jurnal','siswa'].forEach(function(t) {
-    var btn = document.getElementById('tab-pemb-' + t);
-    if (btn) btn.className = (t === tab) ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+  var semuaPKL = getAllPKL();
+  var siswaDUDI = semuaPKL.filter(function(p) {
+    return String(p.ID_DUDI).trim() === String(dudi.ID_DUDI).trim();
   });
-  var c = document.getElementById('pembimbing-tab-content');
-  if (!c) return;
-  if (tab === 'absen') renderPembimbingAbsen(c);
-  else if (tab === 'jurnal') renderPembimbingJurnal(c);
-  else if (tab === 'siswa') renderPembimbingSiswa(c);
-}
 
-function renderPembimbingAbsen(c) {
-  var list = pembimbingState.data.absenPending || [];
-  if (list.length === 0) {
-    c.innerHTML = '<div class="card" style="text-align:center;padding:32px;">' +
-      '<i class="fas fa-check-double" style="font-size:3em;color:var(--primary);"></i>' +
-      '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Tidak Ada Absen Menunggu</h3></div>';
-    return;
+  var nisSet = {};
+  siswaDUDI.forEach(function(p) { nisSet[String(p.NIS).trim()] = true; });
+
+  var today = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd');
+
+  // ── Absen ──
+  var absenSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ABSEN_PKL_PEMB);
+  var absenPending = [];
+  var absenApprovedHariIni = 0;
+
+  if (absenSheet) {
+    var aData = absenSheet.getDataRange().getValues();
+    for (var i = 1; i < aData.length; i++) {
+      var r = aData[i];
+      var nis = String(r[0]).trim();
+      if (!nisSet[nis]) continue;
+
+      var tgl = toISODate(r[1]);                          // ⭐ FIX
+      var approval = String(r[14] || 'Pending').trim();
+
+      if (tgl === today && approval === 'Approved') absenApprovedHariIni++;
+      if (approval === 'Pending') absenPending.push(buildAbsenObj(r, siswaDUDI));
+    }
   }
-  var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  list.forEach(function(a) {
-    var statusClass = { 'TEPAT_WAKTU':'badge-hadir','TERLAMBAT':'badge-izin','SETELAH_ISTIRAHAT':'badge-izin' }[a.Status] || 'badge-hadir';
-    var selfieHtml = a.Selfie_Masuk
-      ? '<a href="' + escapeHtml(a.Selfie_Masuk) + '" target="_blank"><img src="' + escapeHtml(a.Selfie_Masuk) + '" style="width:90px;height:90px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;"></a>'
-      : '<div style="width:90px;height:90px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;color:#92400e;font-size:10px;text-align:center;font-weight:700;padding:6px;">TANPA<br>SELFIE</div>';
-    
-    html += '<div class="card" style="padding:14px;">' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + selfieHtml +
-      '<div style="flex:1;min-width:200px;">' +
-        '<div style="font-weight:800;font-size:15px;">' + escapeHtml(a.Nama_Siswa) + '</div>' +
-        '<div style="font-size:11.5px;color:var(--text-muted);">NIS: ' + escapeHtml(a.NIS) + ' | ' + escapeHtml(a.Nama_Kelas) + ' | ' + escapeHtml(a.Tanggal) + '</div>' +
-        '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
-          '<span class="badge-status-table ' + statusClass + '" style="font-size:11px;padding:3px 12px;">' + a.Status + '</span>' +
-          '<span style="font-size:11px;color:var(--text-muted);">Masuk: ' + (a.Jam_Masuk || '-') + '</span>' +
-          (a.Jarak_Masuk ? '<span style="font-size:11px;color:var(--text-muted);">' + a.Jarak_Masuk + 'm</span>' : '') +
-        '</div>' +
-        (a.Keterangan ? '<div style="font-size:11.5px;color:#475569;margin-top:6px;">Ket: ' + escapeHtml(a.Keterangan) + '</div>' : '') +
-      '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:6px;justify-content:center;">' +
-        '<button class="btn btn-primary btn-sm" onclick="konfirmApproveAbsen(\'' + a.NIS + '\',\'' + a.Tanggal + '\')"><i class="fas fa-check"></i> Setujui</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="konfirmRejectAbsen(\'' + a.NIS + '\',\'' + a.Tanggal + '\')"><i class="fas fa-times"></i> Tolak</button>' +
-      '</div></div></div>';
-  });
-  html += '</div>';
-  c.innerHTML = html;
-}
+  absenPending.sort(function(a, b) { return b.Tanggal.localeCompare(a.Tanggal); });
 
-function renderPembimbingJurnal(c) {
-  var list = pembimbingState.data.jurnalPending || [];
-  if (list.length === 0) {
-    c.innerHTML = '<div class="card" style="text-align:center;padding:32px;">' +
-      '<i class="fas fa-check-double" style="font-size:3em;color:var(--primary);"></i>' +
-      '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Tidak Ada Jurnal Menunggu</h3></div>';
-    return;
+  // ── Jurnal ──
+  var jSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  var jurnalPending = [];
+  if (jSheet) {
+    var jData = jSheet.getDataRange().getValues();
+    for (var j = 1; j < jData.length; j++) {
+      var jr = jData[j];
+      if (!nisSet[String(jr[2]).trim()]) continue;
+      var appDUDI = String(jr[6] || 'Pending').trim();
+      if (appDUDI !== 'Pending') continue;
+      jurnalPending.push(buildJurnalObj(jr, siswaDUDI));
+    }
   }
-  var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  list.forEach(function(j) {
-    var fotoHtml = j.Foto_Url ? '<a href="' + escapeHtml(j.Foto_Url) + '" target="_blank"><img src="' + escapeHtml(j.Foto_Url) + '" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;"></a>' : '';
-    html += '<div class="card" style="padding:14px;">' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + fotoHtml +
-      '<div style="flex:1;min-width:250px;">' +
-        '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">' +
-          '<strong style="font-size:14px;">' + escapeHtml(j.Nama_Siswa || '-') + '</strong>' +
-          '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(j.Tanggal) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12.5px;color:#475569;line-height:1.5;margin-top:8px;">' + escapeHtml(j.Kegiatan).replace(/\n/g, '<br>') + '</div>' +
-      '</div></div>' +
-      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
-        '<button class="btn btn-primary btn-sm" onclick="konfirmApproveJurnalDUDI(\'' + j.ID_Jurnal + '\')"><i class="fas fa-check"></i> Setujui</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="konfirmRejectJurnalDUDI(\'' + j.ID_Jurnal + '\')"><i class="fas fa-times"></i> Tolak</button>' +
-      '</div></div>';
-  });
-  html += '</div>';
-  c.innerHTML = html;
+  jurnalPending.sort(function(a, b) { return b.Tanggal.localeCompare(a.Tanggal); });
+
+  return {
+    dudi: {
+      ID_DUDI: dudi.ID_DUDI,
+      Nama_DUDI: dudi.Nama_DUDI,
+      Alamat: dudi.Alamat || '',
+      Nama_Pembimbing: dudi.Nama_Pembimbing || '',
+      WA_Pembimbing: dudi.WA_Pembimbing || '',
+      Radius_Meter: dudi.Radius_Meter || 20
+    },
+    siswa: siswaDUDI,
+    totalSiswa: siswaDUDI.length,
+    absenPending: absenPending,
+    jurnalPending: jurnalPending,
+    stats: {
+      totalAbsenPending: absenPending.length,
+      totalJurnalPending: jurnalPending.length,
+      absenApprovedHariIni: absenApprovedHariIni
+    }
+  };
 }
 
-function renderPembimbingSiswa(c) {
-  var list = pembimbingState.data.siswa || [];
-  if (list.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:32px;color:var(--text-muted);">Belum ada siswa</div>'; return; }
-  var html = '<div class="card"><div style="overflow-x:auto;"><table class="table-laporan" style="min-width:600px;"><thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Periode</th><th>Status</th></tr></thead><tbody>';
-  list.forEach(function(s, i) {
-    html += '<tr><td>' + (i+1) + '</td><td>' + escapeHtml(s.NIS) + '</td><td style="text-align:left;"><strong>' + escapeHtml(s.Nama_Siswa) + '</strong></td><td>' + escapeHtml(s.Nama_Kelas) + '</td><td style="font-size:11px;">' + (s.Tanggal_Mulai||'-') + ' s/d ' + (s.Tanggal_Selesai||'-') + '</td><td>' + (s.Status === 'Aktif' ? '<span class="badge-status-table badge-hadir">Aktif</span>' : '<span class="badge-status-table badge-alpa">Selesai</span>') + '</td></tr>';
-  });
-  html += '</tbody></table></div></div>';
-  c.innerHTML = html;
+function buildAbsenObj(r, siswaList) {
+  var nis = String(r[0]).trim();
+  var s = siswaList.find(function(x) { return String(x.NIS).trim() === nis; }) || {};
+  return {
+    NIS: nis,
+    Nama_Siswa: s.Nama_Siswa || '(?)',
+    Nama_Kelas: s.Nama_Kelas || '-',
+    Tanggal: toISODate(r[1]),                              // ⭐ FIX
+    Jam_Masuk: toHHmmss(r[3]),                             // ⭐ FIX
+    Jam_Pulang: toHHmmss(r[4]),                            // ⭐ FIX
+    Selfie_Masuk: r[5] || '',
+    Selfie_Pulang: r[6] || '',
+    Jarak_Masuk: r[9] || '',
+    Status: String(r[13] || 'Hadir').trim(),
+    Status_Approval: String(r[14] || 'Pending').trim(),
+    Keterangan: r[15] || '',
+    Alasan_Tanpa_Selfie: r[19] || ''
+  };
 }
 
-function konfirmApproveAbsen(nis, tanggal) {
-  Swal.fire({ title: 'Setujui Absen?', html: 'Absen <strong>' + escapeHtml(nis) + '</strong> (' + escapeHtml(tanggal) + ')?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Setujui', cancelButtonText: 'Batal', confirmButtonColor: '#10b981' })
-    .then(function(r) { if (!r.isConfirmed) return;
-      showLoading();
-      google.script.run.withSuccessHandler(function(res) {
-        hideLoading();
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-        masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-      }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-        .approveAbsenPembimbingSecure(pembimbingState.kodeAkses, pembimbingState.token, nis, tanggal);
+function buildJurnalObj(r, siswaList) {
+  var nis = String(r[2]).trim();
+  var s = siswaList.find(function(x) { return String(x.NIS).trim() === nis; }) || {};
+  return {
+    ID_Jurnal: r[0],
+    Tanggal: toISODate(r[1]),                              // ⭐ FIX
+    NIS: nis,
+    Nama_Siswa: s.Nama_Siswa || '(?)',
+    Nama_Kelas: s.Nama_Kelas || '-',
+    Kegiatan: r[4],
+    Foto_Url: r[5] || '',
+    Approval_DUDI: String(r[6] || 'Pending').trim(),
+    Approval_Sekolah: String(r[9] || 'Pending').trim(),
+    Status_Final: String(r[12] || 'Pending').trim()
+  };
+}
+
+// ═══════════════════════════════════════════════
+// APPROVE / REJECT ABSEN (oleh DUDI)
+// ═══════════════════════════════════════════════
+function approveAbsenPembimbingSecure(kode, token, nis, tanggal) {
+  var v = verifyPembimbingToken(kode, token);
+  if (!v.valid) throw new Error('Sesi tidak valid: ' + v.reason);
+  return _approveAbsenPembimbing(v.dudi, nis, tanggal);
+}
+
+function _approveAbsenPembimbing(dudi, nis, tanggal) {
+  validasiSiswaMilikDUDI(nis, dudi.ID_DUDI);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ABSEN_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Absen_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  var nisClean = String(nis).trim();
+  var tglClean = toISODate(tanggal);                      // ⭐ FIX
+  var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+
+  for (var i = 1; i < values.length; i++) {
+    var rowTgl = toISODate(values[i][1]);                  // ⭐ FIX
+    if (String(values[i][0]).trim() === nisClean && rowTgl === tglClean) {
+      sheet.getRange(i + 1, 15).setValue('Approved');
+      sheet.getRange(i + 1, 17).setValue(dudi.Nama_Pembimbing || 'Pembimbing');
+      sheet.getRange(i + 1, 18).setValue(now);
+      return { success: true, message: 'Absen ' + nisClean + ' disetujui.' };
+    }
+  }
+  throw new Error('Data absen tidak ditemukan. NIS=' + nisClean + ' Tgl=' + tglClean);
+}
+
+function rejectAbsenPembimbingSecure(kode, token, nis, tanggal, alasan) {
+  var v = verifyPembimbingToken(kode, token);
+  if (!v.valid) throw new Error('Sesi tidak valid: ' + v.reason);
+  return _rejectAbsenPembimbing(v.dudi, nis, tanggal, alasan);
+}
+
+function _rejectAbsenPembimbing(dudi, nis, tanggal, alasan) {
+  validasiSiswaMilikDUDI(nis, dudi.ID_DUDI);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ABSEN_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Absen_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  var nisClean = String(nis).trim();
+  var tglClean = toISODate(tanggal);
+  var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+
+  for (var i = 1; i < values.length; i++) {
+    var rowTgl = toISODate(values[i][1]);
+    if (String(values[i][0]).trim() === nisClean && rowTgl === tglClean) {
+      var ketBaru = (values[i][15] || '') + ' | DITOLAK: ' + (alasan || '-');
+      sheet.getRange(i + 1, 15).setValue('Rejected');
+      sheet.getRange(i + 1, 16).setValue(ketBaru);
+      sheet.getRange(i + 1, 17).setValue(dudi.Nama_Pembimbing || 'Pembimbing');
+      sheet.getRange(i + 1, 18).setValue(now);
+      return { success: true, message: 'Absen ' + nisClean + ' ditolak.' };
+    }
+  }
+  throw new Error('Data absen tidak ditemukan. NIS=' + nisClean + ' Tgl=' + tglClean);
+}
+
+function validasiSiswaMilikDUDI(nis, idDudi) {
+  var pklInfo = getPKLByNIS(nis);
+  if (!pklInfo) throw new Error('Siswa ' + nis + ' tidak terdaftar PKL aktif.');
+  if (String(pklInfo.ID_DUDI).trim() !== String(idDudi).trim()) {
+    throw new Error('Siswa bukan bimbingan DUDI ini.');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// APPROVE / REJECT JURNAL (oleh DUDI)
+// ═══════════════════════════════════════════════
+function approveJurnalDUDISecure(kode, token, idJurnal, catatan) {
+  var v = verifyPembimbingToken(kode, token);
+  if (!v.valid) throw new Error('Sesi tidak valid: ' + v.reason);
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Jurnal_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === String(idJurnal).trim()) {
+      validasiSiswaMilikDUDI(values[i][2], v.dudi.ID_DUDI);
+      var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      sheet.getRange(i + 1, 7).setValue('Approved');
+      sheet.getRange(i + 1, 8).setValue(catatan || '');
+      sheet.getRange(i + 1, 9).setValue(now);
+      updateStatusFinalJurnal(sheet, i + 1);
+      return { success: true, message: 'Jurnal disetujui (DUDI).' };
+    }
+  }
+  throw new Error('Jurnal tidak ditemukan.');
+}
+
+function rejectJurnalDUDISecure(kode, token, idJurnal, catatan) {
+  var v = verifyPembimbingToken(kode, token);
+  if (!v.valid) throw new Error('Sesi tidak valid: ' + v.reason);
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Jurnal_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === String(idJurnal).trim()) {
+      validasiSiswaMilikDUDI(values[i][2], v.dudi.ID_DUDI);
+      var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      sheet.getRange(i + 1, 7).setValue('Rejected');
+      sheet.getRange(i + 1, 8).setValue(catatan || 'Tidak valid');
+      sheet.getRange(i + 1, 9).setValue(now);
+      updateStatusFinalJurnal(sheet, i + 1);
+      return { success: true, message: 'Jurnal ditolak (DUDI).' };
+    }
+  }
+  throw new Error('Jurnal tidak ditemukan.');
+}
+
+// ═══════════════════════════════════════════════
+// PEMBIMBING SEKOLAH (Guru via NBM)
+// ═══════════════════════════════════════════════
+function getSiswaBinaanGuru(nbm) {
+  if (!nbm) return [];
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Data_PKL');
+  if (!sheet) return [];
+
+  var values = sheet.getDataRange().getValues();
+  var headers = values[0];
+  var idxNBM = headers.indexOf('NBM_Pembimbing_Sekolah');
+  if (idxNBM === -1) return [];
+
+  var nbmClean = String(nbm).trim();
+  var allPKL = getAllPKL();
+  var pklMap = {};
+  allPKL.forEach(function(p) { pklMap[String(p.NIS).trim()] = p; });
+
+  var result = [];
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][idxNBM]).trim() !== nbmClean) continue;
+    var nis = String(values[i][0]).trim();
+    if (pklMap[nis]) result.push(pklMap[nis]);
+  }
+  return result;
+}
+
+function getJurnalPendingGuru(nbm) {
+  var binaan = getSiswaBinaanGuru(nbm);
+  if (binaan.length === 0) return [];
+
+  var nisSet = {};
+  binaan.forEach(function(s) { nisSet[String(s.NIS).trim()] = true; });
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) return [];
+
+  var values = sheet.getDataRange().getValues();
+  var result = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (!r[0]) continue;
+    var nis = String(r[2]).trim();
+    if (!nisSet[nis]) continue;
+    if (String(r[9] || 'Pending').trim() !== 'Pending') continue;
+
+    var s = binaan.find(function(x) { return String(x.NIS).trim() === nis; }) || {};
+    result.push({
+      ID_Jurnal: r[0],
+      Tanggal: toISODate(r[1]),                             // ⭐ FIX
+      NIS: nis,
+      Nama_Siswa: s.Nama_Siswa || '(?)',
+      Nama_Kelas: s.Nama_Kelas || '-',
+      Nama_DUDI: s.Nama_DUDI || '-',
+      Kegiatan: r[4],
+      Foto_Url: r[5] || '',
+      Approval_DUDI: String(r[6] || 'Pending').trim(),
+      Catatan_DUDI: r[7] || ''
     });
+  }
+  result.sort(function(a, b) { return b.Tanggal.localeCompare(a.Tanggal); });
+  return result;
 }
 
-function konfirmRejectAbsen(nis, tanggal) {
-  Swal.fire({ title: 'Tolak Absen?', input: 'text', inputLabel: 'Alasan', inputPlaceholder: 'Min 5 karakter...', showCancelButton: true, confirmButtonText: 'Tolak', cancelButtonText: 'Batal', confirmButtonColor: '#ef4444',
-    inputValidator: function(v) { if (!v || v.length < 5) return 'Alasan minimal 5 karakter.'; }
-  }).then(function(r) { if (!r.isConfirmed) return;
-    showLoading();
-    google.script.run.withSuccessHandler(function(res) {
-      hideLoading();
-      Swal.fire({ icon: 'success', title: 'Ditolak', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-      masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-    }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-      .rejectAbsenPembimbingSecure(pembimbingState.kodeAkses, pembimbingState.token, nis, tanggal, r.value);
-  });
-}
+function getRiwayatJurnalGuru(nbm) {
+  var binaan = getSiswaBinaanGuru(nbm);
+  if (binaan.length === 0) return [];
 
-function konfirmApproveJurnalDUDI(idJurnal) {
-  Swal.fire({ title: 'Setujui Jurnal?', input: 'textarea', inputLabel: 'Catatan (opsional)', showCancelButton: true, confirmButtonText: 'Setujui', cancelButtonText: 'Batal', confirmButtonColor: '#10b981' })
-    .then(function(r) { if (!r.isConfirmed) return;
-      showLoading();
-      google.script.run.withSuccessHandler(function(res) {
-        hideLoading();
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-        masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-      }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-        .approveJurnalDUDISecure(pembimbingState.kodeAkses, pembimbingState.token, idJurnal, r.value || '');
+  var nisSet = {};
+  binaan.forEach(function(s) { nisSet[String(s.NIS).trim()] = true; });
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) return [];
+
+  var values = sheet.getDataRange().getValues();
+  var result = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (!r[0]) continue;
+    var nis = String(r[2]).trim();
+    if (!nisSet[nis]) continue;
+
+    var s = binaan.find(function(x) { return String(x.NIS).trim() === nis; }) || {};
+    result.push({
+      ID_Jurnal: r[0],
+      Tanggal: toISODate(r[1]),                             // ⭐ FIX
+      NIS: nis,
+      Nama_Siswa: s.Nama_Siswa || '(?)',
+      Nama_Kelas: s.Nama_Kelas || '-',
+      Nama_DUDI: s.Nama_DUDI || '-',
+      Kegiatan: r[4],
+      Foto_Url: r[5] || '',
+      Approval_DUDI: String(r[6] || 'Pending').trim(),
+      Catatan_DUDI: r[7] || '',
+      Approval_Sekolah: String(r[9] || 'Pending').trim(),
+      Catatan_Sekolah: r[10] || '',
+      Status_Final: String(r[12] || 'Pending').trim()
     });
+  }
+  result.sort(function(a, b) { return b.Tanggal.localeCompare(a.Tanggal); });
+  return result;
 }
 
-function konfirmRejectJurnalDUDI(idJurnal) {
-  Swal.fire({ title: 'Tolak Jurnal?', input: 'textarea', inputLabel: 'Alasan', showCancelButton: true, confirmButtonText: 'Tolak', cancelButtonText: 'Batal', confirmButtonColor: '#ef4444',
-    inputValidator: function(v) { if (!v || v.length < 5) return 'Alasan minimal 5 karakter.'; }
-  }).then(function(r) { if (!r.isConfirmed) return;
-    showLoading();
-    google.script.run.withSuccessHandler(function(res) {
-      hideLoading();
-      Swal.fire({ icon: 'success', title: 'Ditolak', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-      masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-    }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-      .rejectJurnalDUDISecure(pembimbingState.kodeAkses, pembimbingState.token, idJurnal, r.value);
-  });
+function approveJurnalSekolah(nbm, idJurnal, catatan) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Jurnal_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === String(idJurnal).trim()) {
+      var nisJurnal = String(values[i][2]).trim();
+      var binaan = getSiswaBinaanGuru(nbm);
+      var ok = binaan.some(function(s) { return String(s.NIS).trim() === nisJurnal; });
+      if (!ok) throw new Error('Anda bukan pembimbing siswa ini.');
+
+      var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      sheet.getRange(i + 1, 10).setValue('Approved');
+      sheet.getRange(i + 1, 11).setValue(catatan || '');
+      sheet.getRange(i + 1, 12).setValue(now);
+      sheet.getRange(i + 1, 14).setValue(nbm);
+      updateStatusFinalJurnal(sheet, i + 1);
+      return { success: true, message: 'Jurnal disetujui (Sekolah).' };
+    }
+  }
+  throw new Error('Jurnal tidak ditemukan.');
+}
+
+function rejectJurnalSekolah(nbm, idJurnal, catatan) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JURNAL_PKL_PEMB);
+  if (!sheet) throw new Error('Sheet Jurnal_PKL tidak ada.');
+
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]).trim() === String(idJurnal).trim()) {
+      var nisJurnal = String(values[i][2]).trim();
+      var binaan = getSiswaBinaanGuru(nbm);
+      var ok = binaan.some(function(s) { return String(s.NIS).trim() === nisJurnal; });
+      if (!ok) throw new Error('Anda bukan pembimbing siswa ini.');
+
+      var now = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      sheet.getRange(i + 1, 10).setValue('Rejected');
+      sheet.getRange(i + 1, 11).setValue(catatan || 'Tidak valid');
+      sheet.getRange(i + 1, 12).setValue(now);
+      sheet.getRange(i + 1, 14).setValue(nbm);
+      updateStatusFinalJurnal(sheet, i + 1);
+      return { success: true, message: 'Jurnal ditolak (Sekolah).' };
+    }
+  }
+  throw new Error('Jurnal tidak ditemukan.');
+}
+
+function updateStatusFinalJurnal(sheet, rowIndex) {
+  var row = sheet.getRange(rowIndex, 1, 1, 15).getValues()[0];
+  var appDUDI = String(row[6] || 'Pending').trim();
+  var appSekolah = String(row[9] || 'Pending').trim();
+  var final = 'Pending';
+  if (appDUDI === 'Rejected' || appSekolah === 'Rejected') final = 'Rejected';
+  else if (appDUDI === 'Approved' && appSekolah === 'Approved') final = 'Approved';
+  else if (appDUDI === 'Approved' || appSekolah === 'Approved') final = 'Partial';
+  sheet.getRange(rowIndex, 13).setValue(final);
+  sheet.getRange(rowIndex, 15).setValue(Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss'));
+}
+
+function getStatsJurnalGuru(nbm) {
+  var pending = getJurnalPendingGuru(nbm);
+  return { pending: pending.length };
 }
