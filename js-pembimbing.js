@@ -154,24 +154,38 @@ function masukKeDashboardPembimbing(kode, token) {
 // ═══════════════════════════════════════════════
 
 function logoutPembimbing() {
-  try {
-    localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-  } catch (e) {}
+  // ⭐ Konfirmasi dulu
+  Swal.fire({
+    title: 'Keluar dari Aplikasi?',
+    html: 'Anda akan keluar dari Dashboard Pembimbing.<br><br>' +
+          '<small style="color:#94a3b8;">Untuk masuk lagi, Anda perlu Kode Akses + PIN.</small>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Keluar',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
 
-  pembimbingState = { kodeAkses: null, token: null, data: null };
+    // ─── Eksekusi Logout ───
+    try {
+      localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
+    } catch (e) {}
 
-  // Bersihkan hash URL
-  if (window.location.hash) {
-    try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
-  }
+    pembimbingState = { kodeAkses: null, token: null, data: null };
 
-  // Tampilkan layar goodbye
-  showGoodbyeScreen();
+    if (window.location.hash) {
+      try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+    }
 
-  // Coba auto-tutup tab (300ms delay)
-  setTimeout(function() {
-    try { window.close(); } catch (e) {}
-  }, 300);
+    showGoodbyeScreen();
+
+    setTimeout(function() {
+      try { window.close(); } catch (e) {}
+    }, 300);
+  });
 }
 
 function showGoodbyeScreen() {
