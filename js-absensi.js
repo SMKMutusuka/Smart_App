@@ -708,9 +708,9 @@ function renderStudentAbsenForm(todayStr) {
 
     '<div class="card" style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 18px;margin-bottom:16px;">' +
       '<div style="font-size:12.5px;color:#78350f;line-height:1.5;">' +
-        '<i class="fas fa-info-circle" style="color:#d97706;"></i> <strong>Info:</strong> ' +
-        'GPS digunakan sebagai indikator lokasi. Jika GPS perangkat Anda lemah/tidak akurat, ' +
-        '<strong>Anda tetap bisa absen</strong>. Guru akan memverifikasi kehadiran Anda melalui foto selfie.' +
+      '<i class="fas fa-info-circle" style="color:#d97706;"></i> <strong>Info:</strong> ' +
+      'Presensi Hadir <strong>WAJIB</strong> berada di area sekolah dan wajib foto selfie. ' +
+      'Pastikan GPS HP aktif dengan mode <strong>Akurasi Tinggi</strong>.' +
       '</div>' +
     '</div>' +
 
