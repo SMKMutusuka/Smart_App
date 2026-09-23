@@ -1,3 +1,43 @@
+// ⭐⭐⭐ WAJIB DI PALING ATAS — biar fungsi ini pasti ke-register
+window.logoutPembimbing = function() {
+  try {
+    localStorage.removeItem('mutusuka_pembimbing');
+  } catch (e) {}
+
+  try {
+    if (typeof pembimbingState !== 'undefined') {
+      pembimbingState = { kodeAkses: null, token: null, data: null };
+    }
+  } catch (e) {}
+
+  // Sembunyikan dashboard pembimbing
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.add('hidden');
+
+  // Balikkan sidebar + topbar (biar login admin normal)
+  var sidebar = document.querySelector('.sidebar');
+  var topbar = document.querySelector('.topbar');
+  if (sidebar) sidebar.classList.remove('hidden');
+  if (topbar) topbar.classList.remove('hidden');
+
+  // Tampilkan login page
+  var loginPage = document.getElementById('login-page');
+  if (loginPage) loginPage.classList.remove('hidden');
+
+  var loginDudi = document.getElementById('login-dudi-page');
+  if (loginDudi) loginDudi.classList.add('hidden');
+
+  // Bersihkan hash
+  if (window.location.hash) {
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  // Kembali ke tab login admin
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+
+  console.log('[Pembimbing] Logout berhasil');
+};
+
 // =============================================
 // PEMBIMBING DUDI — Frontend
 // File: js-pembimbing.js
@@ -11,35 +51,6 @@ var pembimbingState = { kodeAkses: null, token: null, data: null };
 // ═══════════════════════════════════════════════
 // SESSION MANAGEMENT
 // ═══════════════════════════════════════════════
-
-// ⭐ Logout Pembimbing — pindah ke paling atas biar pasti ke-register
-function logoutPembimbing() {
-  try {
-    localStorage.removeItem('mutusuka_pembimbing');
-  } catch (e) {}
-
-  if (typeof pembimbingState !== 'undefined') {
-    pembimbingState = { kodeAkses: null, token: null, data: null };
-  }
-
-  var appLayout = document.getElementById('app-layout');
-  if (appLayout) appLayout.classList.add('hidden');
-
-  var sidebar = document.querySelector('.sidebar');
-  var topbar = document.querySelector('.topbar');
-  if (sidebar) sidebar.classList.remove('hidden');
-  if (topbar) topbar.classList.remove('hidden');
-
-  var loginPage = document.getElementById('login-page');
-  if (loginPage) loginPage.classList.remove('hidden');
-
-  var loginDudi = document.getElementById('login-dudi-page');
-  if (loginDudi) loginDudi.classList.add('hidden');
-
-  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
-}
-
 // ⭐ Alias biar aman kalau ada typo di tempat lain
 window.logoutPembimbing = logoutPembimbing;
 function simpanSessionPembimbing(data) {
