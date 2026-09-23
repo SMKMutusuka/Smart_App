@@ -1022,30 +1022,39 @@ function submitStudentSelfAbsen(e) {
   var s = currentUser.student;
 
   // Validasi
+    // ⭐ Validasi — HADIR wajib selfie + GPS (tanpa pengecualian)
   if (status === 'Hadir') {
+    // Cek selfie
     if (!hasSelfieCapture()) {
-      Swal.fire({ icon: 'warning', title: 'Selfie Wajib',
-                  text: 'Silakan ambil foto selfie sebagai bukti kehadiran.' });
-      return;
-    }
-    if ((!latInput.value || !lngInput.value) && !keterangan) {
       Swal.fire({
-        icon: 'info',
-        title: 'GPS Tidak Terdeteksi',
-        html: 'Tidak masalah! Anda tetap bisa absen.<br><br>' +
-              '<strong>Mohon isi kolom Keterangan</strong> dengan alasan ' +
-              '(contoh: "GPS HP error, saya di kelas XI TSM").<br><br>' +
-              'Guru akan verifikasi kehadiran Anda via selfie.'
+        icon: 'warning',
+        title: 'Selfie Wajib',
+        text: 'Silakan ambil foto selfie terlebih dahulu sebagai bukti kehadiran.'
       });
-      document.getElementById('student_keterangan').focus();
       return;
     }
+
+    // ⭐ Cek GPS — WAJIB, tidak bisa di-bypass
+    if (!latInput.value || !lngInput.value) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Lokasi GPS Belum Terdeteksi',
+        html: 'Anda <strong>harus berada di area sekolah</strong> untuk melakukan presensi.<br><br>' +
+              'Langkah-langkah:<br>' +
+              '1. Klik tombol <strong>Dapatkan Lokasi Saya</strong><br>' +
+              '2. Izinkan akses lokasi di browser<br>' +
+              '3. Tunggu sampai muncul jarak dari sekolah<br>' +
+              '4. Kalau masih gagal, coba keluar ruangan / dekat jendela<br>' +
+              '5. Pastikan GPS HP dalam mode <strong>Akurasi Tinggi</strong>',
+        confirmButtonText: 'Baik, Coba Lagi',
+        confirmButtonColor: '#10b981'
+      });
+      return;
+    }
+
+    // Cek keterangan kosong kalau perlu (tidak perlu lagi karena GPS wajib)
   } else if (status === 'Sakit' || status === 'Izin') {
-    if (!keterangan) {
-      Swal.fire({ icon: 'warning', title: 'Keterangan Wajib',
-                  text: 'Mohon isi keterangan untuk status ' + status + '.' });
-      return;
-    }
+  
     if (!fileInput.files || !fileInput.files[0]) {
       Swal.fire({ icon: 'warning', title: 'Surat Wajib',
                   text: 'Untuk status ' + status + ', wajib upload surat.' });
@@ -1056,7 +1065,6 @@ function submitStudentSelfAbsen(e) {
   // Konfirmasi
   var confirmMsg = 'Kirim absensi (' + status + ') untuk hari ini?';
   if (status === 'Hadir' && (!latInput.value || !lngInput.value)) {
-    confirmMsg += '\n\n⚠️ Tanpa GPS, absensi akan menunggu verifikasi guru.';
   }
 
   Swal.fire({
