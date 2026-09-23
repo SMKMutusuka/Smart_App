@@ -1,7 +1,8 @@
 // =============================================
-// PEMBIMBING DUDI — Frontend (FINAL)
+// PEMBIMBING DUDI — Frontend (FINAL CLEAN)
 // File: js-pembimbing.js
-// Versi: v2026-09-23-clean
+// Versi: v2026-09-23-final
+// ⭐ Logout = keluar aplikasi (tidak balik ke login admin)
 // =============================================
 
 var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
@@ -104,7 +105,7 @@ function cekHashPembimbing() {
 }
 
 // ═══════════════════════════════════════════════
-// MASUK & KELUAR DASHBOARD
+// MASUK DASHBOARD
 // ═══════════════════════════════════════════════
 
 function masukKeDashboardPembimbing(kode, token) {
@@ -141,13 +142,16 @@ function masukKeDashboardPembimbing(kode, token) {
       hideLoading();
       if (err.message && err.message.indexOf('Sesi tidak valid') !== -1) {
         logoutPembimbing();
-        Swal.fire({ icon: 'warning', title: 'Sesi Habis', text: 'Silakan login ulang dengan PIN.' });
         return;
       }
       renderPembimbingError(err.message);
     })
     .getDashboardPembimbingSecure(kode, token);
 }
+
+// ═══════════════════════════════════════════════
+// LOGOUT — KELUAR DARI APLIKASI
+// ═══════════════════════════════════════════════
 
 function logoutPembimbing() {
   try {
@@ -156,53 +160,69 @@ function logoutPembimbing() {
 
   pembimbingState = { kodeAkses: null, token: null, data: null };
 
-  var appLayout = document.getElementById('app-layout');
-  if (appLayout) appLayout.classList.add('hidden');
-
-  var sidebar = document.querySelector('.sidebar');
-  var topbar = document.querySelector('.topbar');
-  if (sidebar) sidebar.classList.remove('hidden');
-  if (topbar) topbar.classList.remove('hidden');
-
-  var loginPage = document.getElementById('login-page');
-  if (loginPage) loginPage.classList.remove('hidden');
-
-  var loginDudi = document.getElementById('login-dudi-page');
-  if (loginDudi) loginDudi.classList.add('hidden');
-
+  // Bersihkan hash URL
   if (window.location.hash) {
-    history.replaceState(null, '', window.location.pathname);
+    try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
   }
 
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+  // Tampilkan layar goodbye
+  showGoodbyeScreen();
+
+  // Coba auto-tutup tab (300ms delay)
+  setTimeout(function() {
+    try { window.close(); } catch (e) {}
+  }, 300);
 }
 
-// ⭐ Pindah ke login utama TANPA hapus session pembimbing
-function pindahKeLoginUtama() {
-  var appLayout = document.getElementById('app-layout');
-  if (appLayout) appLayout.classList.add('hidden');
+function showGoodbyeScreen() {
+  document.body.innerHTML =
+    '<div id="goodbye-screen" style="' +
+      'position:fixed;top:0;left:0;width:100vw;height:100vh;' +
+      'background:linear-gradient(135deg,#064e3b 0%,#059669 100%);' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'z-index:99999;padding:20px;' +
+    '">' +
+      '<div style="' +
+        'background:#fff;padding:36px 32px;border-radius:24px;' +
+        'max-width:400px;width:100%;text-align:center;' +
+        'box-shadow:0 20px 40px rgba(0,0,0,0.3);' +
+      '">' +
+        '<div style="font-size:4em;color:#10b981;margin-bottom:16px;">' +
+          '<i class="fas fa-check-circle"></i>' +
+        '</div>' +
+        '<h2 style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:8px;">' +
+          'Anda Telah Keluar' +
+        '</h2>' +
+        '<p style="font-size:13px;color:#64748b;line-height:1.6;margin-bottom:24px;">' +
+          'Terima kasih telah menggunakan Dashboard Pembimbing DUDI.<br>' +
+          'Sesi Anda telah diakhiri dengan aman.' +
+        '</p>' +
+        '<button onclick="forceTutupTab()" style="' +
+          'background:linear-gradient(135deg,#10b981 0%,#059669 100%);' +
+          'color:#fff;border:none;padding:14px 24px;border-radius:12px;' +
+          'font-size:14px;font-weight:700;cursor:pointer;width:100%;' +
+          'display:flex;align-items:center;justify-content:center;gap:8px;' +
+          'box-shadow:0 4px 14px rgba(16,185,129,0.4);' +
+        '">' +
+          '<i class="fas fa-times-circle"></i> Tutup Halaman' +
+        '</button>' +
+        '<p style="font-size:11px;color:#94a3b8;margin-top:16px;">' +
+          'Jika tab tidak tertutup otomatis, klik tombol di atas atau tutup tab manual.' +
+        '</p>' +
+      '</div>' +
+    '</div>';
+}
 
-  var sidebar = document.querySelector('.sidebar');
-  var topbar = document.querySelector('.topbar');
-  if (sidebar) sidebar.classList.remove('hidden');
-  if (topbar) topbar.classList.remove('hidden');
-
-  var loginPage = document.getElementById('login-page');
-  if (loginPage) loginPage.classList.remove('hidden');
-
-  var loginDudi = document.getElementById('login-dudi-page');
-  if (loginDudi) loginDudi.classList.add('hidden');
-
-  if (window.location.hash) {
-    history.replaceState(null, '', window.location.pathname);
+function forceTutupTab() {
+  try {
+    window.close();
+    setTimeout(function() {
+      window.location.href = 'about:blank';
+    }, 500);
+  } catch (e) {
+    window.location.href = 'about:blank';
   }
-
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
 }
-
-// ⭐ Register ke window (biar onclick="logoutPembimbing()" di HTML selalu bisa akses)
-window.logoutPembimbing = logoutPembimbing;
-window.pindahKeLoginUtama = pindahKeLoginUtama;
 
 function renderPembimbingError(msg) {
   var c = document.getElementById('pembimbing-content');
@@ -228,6 +248,7 @@ function renderPembimbingDashboard(data) {
 
   var html = '';
 
+  // Header DUDI
   html +=
     '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
       '<div style="font-size:18px;font-weight:800;color:var(--primary-dark);"><i class="fas fa-building"></i> ' + escapeHtml(dudi.Nama_DUDI) + '</div>' +
@@ -237,6 +258,7 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
+  // Stat cards
   html +=
     '<div class="stat-grid" style="margin-bottom:18px;">' +
       '<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);">' +
@@ -261,6 +283,7 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
+  // Tab navigation (HANYA tombol Keluar, tanpa Login Admin/Guru)
   html +=
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen">' +
@@ -272,14 +295,12 @@ function renderPembimbingDashboard(data) {
       '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'siswa\')" id="tab-pemb-siswa">' +
         '<i class="fas fa-users"></i> Daftar Siswa' +
       '</button>' +
-      '<button type="button" class="btn btn-outline btn-sm" onclick="pindahKeLoginUtama()" style="margin-left:auto;">' +
-        '<i class="fas fa-exchange-alt"></i> Login Admin/Guru' +
-      '</button>' +
-      '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()">' +
+      '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()" style="margin-left:auto;">' +
         '<i class="fas fa-sign-out-alt"></i> Keluar' +
       '</button>' +
     '</div>';
 
+  // Tab content container
   html += '<div id="pembimbing-tab-content"></div>';
 
   c.innerHTML = html;
@@ -578,3 +599,20 @@ function konfirmRejectJurnalDUDI(idJurnal) {
       .rejectJurnalDUDISecure(pembimbingState.kodeAkses, pembimbingState.token, idJurnal, r.value);
   });
 }
+
+// ═══════════════════════════════════════════════
+// REGISTRASI FUNGSI KE WINDOW
+// ⭐ WAJIB DI PALING BAWAH — biar onclick="..." di HTML bisa akses
+// ═══════════════════════════════════════════════
+
+window.logoutPembimbing = logoutPembimbing;
+window.showGoodbyeScreen = showGoodbyeScreen;
+window.forceTutupTab = forceTutupTab;
+window.masukKeDashboardPembimbing = masukKeDashboardPembimbing;
+window.renderPembimbingDashboard = renderPembimbingDashboard;
+window.showPembimbingTab = showPembimbingTab;
+window.konfirmApproveAbsen = konfirmApproveAbsen;
+window.konfirmRejectAbsen = konfirmRejectAbsen;
+window.konfirmApproveJurnalDUDI = konfirmApproveJurnalDUDI;
+window.konfirmRejectJurnalDUDI = konfirmRejectJurnalDUDI;
+window.handleLoginPembimbing = handleLoginPembimbing;
