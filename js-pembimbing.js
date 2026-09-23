@@ -1,3 +1,15 @@
+window.logoutPembimbing = function() {
+  try { localStorage.removeItem('mutusuka_pembimbing'); } catch (e) {}
+  try { pembimbingState = { kodeAkses: null, token: null, data: null }; } catch (e) {}
+  var al = document.getElementById('app-layout'); if (al) al.classList.add('hidden');
+  var sb = document.querySelector('.sidebar'); if (sb) sb.classList.remove('hidden');
+  var tb = document.querySelector('.topbar'); if (tb) tb.classList.remove('hidden');
+  var lp = document.getElementById('login-page'); if (lp) lp.classList.remove('hidden');
+  var ld = document.getElementById('login-dudi-page'); if (ld) ld.classList.add('hidden');
+  if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+};
+
 // ⭐⭐⭐ WAJIB DI PALING ATAS — biar fungsi ini pasti ke-register
 window.logoutPembimbing = function() {
   try {
