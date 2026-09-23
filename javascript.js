@@ -665,6 +665,19 @@ function initSiswa() {
   loadTugasSiswa();
 }
 
+function initAdminPKL() {
+  console.log('[AdminPKL] Init dashboard PKL');
+
+  // Load DUDI + Assign PKL data biar siap
+  if (typeof loadDUDI === 'function') loadDUDI();
+  if (typeof loadAssignPKL === 'function') loadAssignPKL();
+
+  // Redirect ke halaman Assign PKL (default untuk AdminPKL)
+  if (typeof showPage === 'function') {
+    showPage('page-pkl-assign', document.querySelector('[data-page="pkl-assign"]'));
+  }
+}
+
 // =============================================
 // DASHBOARD ADMIN
 // =============================================
