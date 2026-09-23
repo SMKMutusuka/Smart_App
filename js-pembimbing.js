@@ -156,38 +156,54 @@ function masukKeDashboardPembimbing(kode, token) {
 // ═══════════════════════════════════════════════
 
 function logoutPembimbing() {
-  // Cek dulu — kalau user click, baru tanya
-  var yakin = confirm(
-    'Keluar dari aplikasi?\n\n' +
-    'Anda perlu Kode Akses + PIN untuk masuk lagi.'
-  );
+  Swal.fire({
+    title: 'Akhiri Sesi Pembimbing?',
+    html:
+      '<div style="text-align:center;line-height:1.7;">' +
+    'Anda akan keluar dari Dashboard Pembimbing DUDI:' +
+    '<br><br>' +
+    '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px;text-align:left;font-size:13px;">' +
+      '<div><strong>' + escapeHtml(pembimbingState.data ? pembimbingState.data.dudi.Nama_DUDI : '-') + '</strong></div>' +
+      '<div style="color:#065f46;font-size:12px;margin-top:2px;">' +
+        '<i class="fas fa-user-tie"></i> ' + escapeHtml(pembimbingState.data ? pembimbingState.data.dudi.Nama_Pembimbing : '-') +
+      '</div>' +
+    '</div>' +
+    '<br>' +
+    '<div style="font-size:12px;color:#94a3b8;">Untuk masuk lagi, siapkan Kode Akses + PIN.</div>' +
+  '</div>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Keluar',
+    cancelButtonText: '<i class="fas fa-arrow-left"></i> Tetap di Sini',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true,
+    focusCancel: true,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    customClass: {
+      popup: 'swal-pembimbing-logout'
+    }
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
 
-  if (!yakin) {
-    console.log('[Pembimbing] Logout dibatalkan user');
-    return;
-  }
+    // ─── Eksekusi Logout ───
+    try {
+      localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
+    } catch (e) {}
 
-  console.log('[Pembimbing] User konfirmasi logout');
-  _eksekusiLogoutPembimbing();
-}
+    pembimbingState = { kodeAkses: null, token: null, data: null };
 
-// ⭐ Fungsi internal logout (tanpa konfirmasi) — dipakai kalau sesi expired
-function _eksekusiLogoutPembimbing() {
-  try {
-    localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-  } catch (e) {}
+    if (window.location.hash) {
+      try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+    }
 
-  pembimbingState = { kodeAkses: null, token: null, data: null };
+    showGoodbyeScreen();
 
-  if (window.location.hash) {
-    try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
-  }
-
-  showGoodbyeScreen();
-
-  setTimeout(function() {
-    try { window.close(); } catch (e) {}
-  }, 300);
+    setTimeout(function() {
+      try { window.close(); } catch (e) {}
+    }, 300);
+  });
 }
 
 function showGoodbyeScreen() {
