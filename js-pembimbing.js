@@ -1,8 +1,8 @@
 // =============================================
-// PEMBIMBING DUDI — Frontend (FINAL CLEAN)
+// PEMBIMBING DUDI — Frontend (FINAL)
 // File: js-pembimbing.js
-// Versi: v2026-09-23-final
-// ⭐ Logout = keluar aplikasi (tidak balik ke login admin)
+// Versi: v2026-09-23-final2
+// ⭐ Logout pakai confirm() native — TIDAK bisa di-skip
 // =============================================
 
 var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
@@ -141,7 +141,8 @@ function masukKeDashboardPembimbing(kode, token) {
     .withFailureHandler(function(err) {
       hideLoading();
       if (err.message && err.message.indexOf('Sesi tidak valid') !== -1) {
-        logoutPembimbing();
+        // ⭐ Sesi expired → logout TANPA konfirmasi (bukan user yang klik)
+        _eksekusiLogoutPembimbing();
         return;
       }
       renderPembimbingError(err.message);
@@ -150,42 +151,43 @@ function masukKeDashboardPembimbing(kode, token) {
 }
 
 // ═══════════════════════════════════════════════
-// LOGOUT — KELUAR DARI APLIKASI
+// LOGOUT — PAKAI confirm() NATIVE
+// ⭐ confirm() = blocking dialog, tidak bisa di-skip
 // ═══════════════════════════════════════════════
 
 function logoutPembimbing() {
-  // ⭐ Konfirmasi dulu
-  Swal.fire({
-    title: 'Keluar dari Aplikasi?',
-    html: 'Anda akan keluar dari Dashboard Pembimbing.<br><br>' +
-          '<small style="color:#94a3b8;">Untuk masuk lagi, Anda perlu Kode Akses + PIN.</small>',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Keluar',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#ef4444',
-    cancelButtonColor: '#64748b',
-    reverseButtons: true
-  }).then(function(r) {
-    if (!r.isConfirmed) return;
+  // Cek dulu — kalau user click, baru tanya
+  var yakin = confirm(
+    'Keluar dari aplikasi?\n\n' +
+    'Anda perlu Kode Akses + PIN untuk masuk lagi.'
+  );
 
-    // ─── Eksekusi Logout ───
-    try {
-      localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
-    } catch (e) {}
+  if (!yakin) {
+    console.log('[Pembimbing] Logout dibatalkan user');
+    return;
+  }
 
-    pembimbingState = { kodeAkses: null, token: null, data: null };
+  console.log('[Pembimbing] User konfirmasi logout');
+  _eksekusiLogoutPembimbing();
+}
 
-    if (window.location.hash) {
-      try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
-    }
+// ⭐ Fungsi internal logout (tanpa konfirmasi) — dipakai kalau sesi expired
+function _eksekusiLogoutPembimbing() {
+  try {
+    localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
+  } catch (e) {}
 
-    showGoodbyeScreen();
+  pembimbingState = { kodeAkses: null, token: null, data: null };
 
-    setTimeout(function() {
-      try { window.close(); } catch (e) {}
-    }, 300);
-  });
+  if (window.location.hash) {
+    try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+  }
+
+  showGoodbyeScreen();
+
+  setTimeout(function() {
+    try { window.close(); } catch (e) {}
+  }, 300);
 }
 
 function showGoodbyeScreen() {
@@ -262,7 +264,6 @@ function renderPembimbingDashboard(data) {
 
   var html = '';
 
-  // Header DUDI
   html +=
     '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
       '<div style="font-size:18px;font-weight:800;color:var(--primary-dark);"><i class="fas fa-building"></i> ' + escapeHtml(dudi.Nama_DUDI) + '</div>' +
@@ -272,7 +273,6 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
-  // Stat cards
   html +=
     '<div class="stat-grid" style="margin-bottom:18px;">' +
       '<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);">' +
@@ -297,7 +297,6 @@ function renderPembimbingDashboard(data) {
       '</div>' +
     '</div>';
 
-  // Tab navigation (HANYA tombol Keluar, tanpa Login Admin/Guru)
   html +=
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen">' +
@@ -314,7 +313,6 @@ function renderPembimbingDashboard(data) {
       '</button>' +
     '</div>';
 
-  // Tab content container
   html += '<div id="pembimbing-tab-content"></div>';
 
   c.innerHTML = html;
@@ -615,8 +613,7 @@ function konfirmRejectJurnalDUDI(idJurnal) {
 }
 
 // ═══════════════════════════════════════════════
-// REGISTRASI FUNGSI KE WINDOW
-// ⭐ WAJIB DI PALING BAWAH — biar onclick="..." di HTML bisa akses
+// REGISTRASI KE WINDOW
 // ═══════════════════════════════════════════════
 
 window.logoutPembimbing = logoutPembimbing;
