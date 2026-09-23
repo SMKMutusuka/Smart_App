@@ -110,30 +110,25 @@ function masukKeDashboardPembimbing(kode, token) {
   pembimbingState.kodeAkses = kode;
   pembimbingState.token = token;
 
-  // ⭐ Sembunyikan semua halaman login
   var loginPage = document.getElementById('login-page');
   var loginDudi = document.getElementById('login-dudi-page');
   if (loginPage) loginPage.classList.add('hidden');
   if (loginDudi) loginDudi.classList.add('hidden');
 
-  // ⭐ TAMPILKAN app-layout (induk dari page-pembimbing)
   var appLayout = document.getElementById('app-layout');
   if (appLayout) appLayout.classList.remove('hidden');
 
-  // ⭐ Sembunyikan sidebar + topbar (biar tidak ada menu admin)
   var sidebar = document.querySelector('.sidebar');
   var topbar = document.querySelector('.topbar');
   if (sidebar) sidebar.classList.add('hidden');
   if (topbar) topbar.classList.add('hidden');
 
-  // ⭐ Sembunyikan SEMUA .page, tampilkan hanya page-pembimbing
   document.querySelectorAll('.page').forEach(function(p) {
     p.classList.add('hidden');
   });
   var pagePembimbing = document.getElementById('page-pembimbing');
   if (pagePembimbing) pagePembimbing.classList.remove('hidden');
 
-  // ⭐ Load data dashboard
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
