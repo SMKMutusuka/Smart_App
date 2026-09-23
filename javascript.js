@@ -1916,11 +1916,15 @@ document.addEventListener('DOMContentLoaded', function() {
   initDOMCache();
   addRippleEffect();
 
-  // ⭐ PRIORITAS 1: Hash pembimbing di URL (#pembimbing=KODE)
-  if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
+  // ⭐ AUTO-LOGIN PEMBIMBING DIMATIKAN
+  // Biar admin/guru/siswa bisa login kapan saja tanpa "kejebak" di dashboard pembimbing.
+  // Kalau mau aktifkan lagi: uncomment baris di bawah.
+  // if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
 
-  // ⭐ PRIORITAS 2: Auto-login pembimbing dari localStorage
-  if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
+  // ⭐ Cek hash #pembimbing=KODE — HANYA kalau user buka link share dari DUDI
+  if (window.location.hash && window.location.hash.indexOf('#pembimbing=') === 0) {
+    if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
+  }
 
   var tglAbsen = document.getElementById('tgl_absen');
   if (tglAbsen) tglAbsen.value = todayLocalISO();
