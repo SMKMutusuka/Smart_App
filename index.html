@@ -350,20 +350,22 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
     </div>
 
     <!-- Menu ADMIN -->
+        <!-- Menu ADMIN -->
     <ul class="sidebar-menu" id="menu-admin">
-      <li><a href="#" onclick="showPage('page-dashboard-admin', this); return false;" class="active" data-page="dashboard-admin"><i class="fas fa-chart-line"></i> Beranda Admin</a></li>
-      <li><a href="#" onclick="showPage('page-approval-admin', this); return false;" data-page="approval-admin"><i class="fas fa-check-double"></i> Approval Absensi <span id="approval-badge" class="hidden" style="background:#ef4444;color:#fff;padding:1px 8px;border-radius:12px;font-size:10px;font-weight:700;margin-left:auto;">0</span></a></li>
-      <li><a href="#" onclick="showPage('page-lokasi-kelas', this); return false;" data-page="lokasi-kelas"><i class="fas fa-map-marker-alt"></i> Lokasi Sekolah</a></li>
-      <li><a href="#" onclick="showPage('page-dudi', this); return false;" data-page="dudi"><i class="fas fa-building"></i> Data DUDI (PKL)</a></li>
-      <li><a href="#" onclick="showPage('page-pkl-assign', this); return false;" data-page="pkl-assign"><i class="fas fa-user-tie"></i> Assign PKL Siswa</a></li>
-      <li><a href="#" onclick="showPage('page-kelas', this); return false;" data-page="kelas"><i class="fas fa-chalkboard"></i> Data Kelas</a></li>
-      <li><a href="#" onclick="showPage('page-siswa', this); return false;" data-page="siswa"><i class="fas fa-users"></i> Data Siswa</a></li>
-      <li><a href="#" onclick="showPage('page-input-absen', this); return false;" data-page="input-absen"><i class="fas fa-clipboard-check"></i> Input Absensi</a></li>
-      <li><a href="#" onclick="showPage('page-tugas-admin', this); return false;" data-page="tugas-admin"><i class="fas fa-folder-open"></i> Data Tugas Siswa</a></li>
-      <li><a href="#" onclick="showPage('page-laporan', this); return false;" data-page="laporan"><i class="fas fa-file-alt"></i> Laporan Rekap</a></li>
-      <li><a href="#" onclick="showPage('page-whatsapp-admin', this); return false;" data-page="whatsapp-admin"><i class="fab fa-whatsapp"></i> Monitoring WhatsApp</a></li>
-      <li><a href="#" onclick="showPage('page-pengaturan-admin', this); return false;" data-page="pengaturan-admin"><i class="fas fa-cog"></i> Pengaturan Akun</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-dashboard-admin', this); return false;" class="active" data-page="dashboard-admin"><i class="fas fa-chart-line"></i> Beranda Admin</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-approval-admin', this); return false;" data-page="approval-admin"><i class="fas fa-check-double"></i> Approval Absensi <span id="approval-badge" class="hidden" style="background:#ef4444;color:#fff;padding:1px 8px;border-radius:12px;font-size:10px;font-weight:700;margin-left:auto;">0</span></a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-lokasi-kelas', this); return false;" data-page="lokasi-kelas"><i class="fas fa-map-marker-alt"></i> Lokasi Sekolah</a></li>
+      <li class="menu-item-admin-pkl"><a href="#" onclick="showPage('page-dudi', this); return false;" data-page="dudi"><i class="fas fa-building"></i> Data DUDI (PKL)</a></li>
+      <li class="menu-item-admin-pkl"><a href="#" onclick="showPage('page-pkl-assign', this); return false;" data-page="pkl-assign"><i class="fas fa-user-tie"></i> Assign PKL Siswa</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-kelas', this); return false;" data-page="kelas"><i class="fas fa-chalkboard"></i> Data Kelas</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-siswa', this); return false;" data-page="siswa"><i class="fas fa-users"></i> Data Siswa</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-input-absen', this); return false;" data-page="input-absen"><i class="fas fa-clipboard-check"></i> Input Absensi</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-tugas-admin', this); return false;" data-page="tugas-admin"><i class="fas fa-folder-open"></i> Data Tugas Siswa</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-laporan', this); return false;" data-page="laporan"><i class="fas fa-file-alt"></i> Laporan Rekap</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-whatsapp-admin', this); return false;" data-page="whatsapp-admin"><i class="fab fa-whatsapp"></i> Monitoring WhatsApp</a></li>
+      <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-pengaturan-admin', this); return false;" data-page="pengaturan-admin"><i class="fas fa-cog"></i> Pengaturan Akun</a></li>
       <li style="margin-top: auto;"><a href="#" onclick="logout(); return false;" style="color:#ef4444;"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
+    </ul>
     </ul>
 
     <!-- Menu GTK -->
