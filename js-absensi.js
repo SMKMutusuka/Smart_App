@@ -805,6 +805,51 @@ function renderStudentAbsenForm(todayStr) {
   toggleAbsenFields();
 }
 
+// ⭐ Konfirmasi & submit absen pulang (tanpa selfie)
+function konfirmAbsenPulang() {
+  if (!currentUser || !currentUser.student) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Data siswa tidak ditemukan.' });
+    return;
+  }
+
+  Swal.fire({
+    title: 'Konfirmasi Absen Pulang',
+    html: 'Catat waktu pulang Anda sekarang?<br><br>' +
+          '<small style="color:#94a3b8;">Waktu pulang akan tersimpan otomatis.</small>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Absen Pulang',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#64748b'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+
+    var nisClean = String(currentUser.student.NIS).trim();
+    showLoading();
+
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        hideLoading();
+        Swal.fire({
+          icon: 'success',
+          title: 'Absen Pulang Berhasil',
+          text: msg,
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+        // Refresh halaman absen
+        setTimeout(function() { prepareStudentAbsenPage(); }, 1200);
+      })
+      .withFailureHandler(function(err) {
+        hideLoading();
+        Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+      })
+      .submitAbsenPulangSiswa(nisClean, '');
+  });
+}
 function toggleAbsenFields() {
   var status = document.querySelector('input[name="student_status"]:checked');
   var gpsGroup = document.getElementById('gps-group');
