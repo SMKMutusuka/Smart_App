@@ -1956,3 +1956,65 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+// ⭐ Helper terpusat: buka WhatsApp (Desktop di PC, App di HP, fallback WA Web)
+function bukaWhatsApp(nomor, pesan, namaPenerima) {
+  if (!nomor) {
+    Swal.fire({ icon: 'warning', title: 'Nomor Kosong', text: 'Nomor WhatsApp belum terdaftar.' });
+    return;
+  }
+
+  var formatted = formatWaNumber(nomor);
+  if (!formatted) {
+    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit angka.' });
+    return;
+  }
+
+  var text = pesan ? encodeURIComponent(pesan) : '';
+  var waMeUrl = 'https://wa.me/' + formatted + (text ? '?text=' + text : '');
+  var waDesktopUrl = 'whatsapp://send?phone=' + formatted + (text ? '&text=' + text : '');
+
+  var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // ⭐ HP → langsung buka app WhatsApp
+  if (isMobile) {
+    window.location.href = waMeUrl;
+    return;
+  }
+
+  // ⭐ PC → coba WhatsApp Desktop dulu, fallback ke WA Web
+  var konfirmasiText = namaPenerima
+    ? 'Pesan akan dikirim ke <strong>' + escapeHtml(namaPenerima) + '</strong><br>(' + nomor + ')'
+    : 'Pesan akan dikirim ke <strong>' + nomor + '</strong>';
+
+  Swal.fire({
+    title: 'Kirim ke WhatsApp?',
+    html: konfirmasiText + '<br><br><small style="color:#94a3b8;">Jika WhatsApp Desktop terinstall, akan terbuka otomatis. Kalau tidak, akan buka WhatsApp Web.</small>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#25D366'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+
+    var desktopOpened = false;
+    var fallbackTimer = setTimeout(function() {
+      if (!desktopOpened) {
+        window.open(waMeUrl, '_blank');
+      }
+    }, 1500);
+
+    function onVisibilityChange() {
+      if (document.hidden) {
+        desktopOpened = true;
+        clearTimeout(fallbackTimer);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    try {
+      window.location.href = waDesktopUrl;
+    } catch (e) {}
+  });
+}
