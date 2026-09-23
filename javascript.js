@@ -352,11 +352,21 @@ function loadWaNotifSection(startDate, endDate) {
         'Izin': 'background:linear-gradient(135deg,#f59e0b,#d97706);'
       };
 
-      var htmlBuffer = data.map(function(s) {
+            var htmlBuffer = data.map(function(s) {
         var tanggalDisplay = formatDateDisplay(s.Tanggal);
+        var statusColorMap = {
+          'Alpa': 'background:linear-gradient(135deg,#ef4444,#dc2626);',
+          'Sakit': 'background:linear-gradient(135deg,#3b82f6,#2563eb);',
+          'Izin': 'background:linear-gradient(135deg,#f59e0b,#d97706);'
+        };
         var badgeStyle = statusColorMap[s.Status] || 'background:#94a3b8;';
         var hasWaWali = s.WA_Wali && s.WA_Wali.length >= 10;
         var hasWaSiswa = s.WA_Siswa && s.WA_Siswa.length >= 10;
+
+        // ⭐ BADGE "BELUM ABSEN" — letak di sini
+        var belumAbsenBadge = s.BelumAbsen
+          ? '<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px;border:1px dashed #fff;">⏰ BELUM ABSEN</span>'
+          : '';
 
         var btnWali = hasWaWali
           ? '<button class="btn btn-wa" onclick="kirimWaWaliSiswa(\'' + s.NIS + '\',\'' + escapeHtml(s.Nama_Siswa).replace(/'/g, "\\'") + '\',\'' + escapeHtml(s.Nama_Kelas).replace(/'/g, "\\'") + '\',\'' + tanggalDisplay + '\',\'' + s.Status + '\',\'' + escapeHtml((s.Keterangan || '').replace(/'/g, "\\'")).substring(0, 80) + '\')">' +
@@ -372,7 +382,8 @@ function loadWaNotifSection(startDate, endDate) {
           '<div class="wa-notif-info">' +
             '<div class="wa-notif-name">' +
               '<span class="wa-notif-badge" style="' + badgeStyle + '">' + s.Status + '</span>' +
-              escapeHtml(s.Nama_Siswa) +
+              belumAbsenBadge +                                             // ⭐ BADGE DI SINI
+              ' ' + escapeHtml(s.Nama_Siswa) +
             '</div>' +
             '<div class="wa-notif-meta">' +
               'NIS: ' + escapeHtml(s.NIS) +
@@ -394,7 +405,7 @@ function loadWaNotifSection(startDate, endDate) {
         '<div style="font-size:12px;margin-top:4px;">' + escapeHtml(err.message) + '</div>' +
       '</div>';
     })
-    .getSiswaTidakHadir(tanggal, '');
+    .getSiswaTidakHadirLengkap(tanggal, '');
 }
 
 // =============================================
