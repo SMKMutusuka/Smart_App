@@ -726,7 +726,7 @@ function renderStudentAbsenForm(todayStr) {
             '</button>' +
             '<span id="gps-status-text" style="margin-left:10px;font-size:12px;color:var(--text-muted);">Belum diambil</span>' +
           '</div>' +
-          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. GPS opsional — bisa lanjut tanpa GPS.</div>' +
+          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. WAJIB — tidak bisa lanjut tanpa GPS.</div>' +
           '<input type="hidden" id="student_latitude" value="">' +
           '<input type="hidden" id="student_longitude" value="">' +
           '<input type="hidden" id="student_gps_accuracy" value="">' +
