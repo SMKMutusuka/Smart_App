@@ -1,9 +1,9 @@
 // =============================================
 // MODUL PKL — Frontend FINAL
 // File: js-pkl.js
-// Versi: v2026-09-23-clean
-// ⭐ FIX: kirimLinkPembimbingWA yang rusak
-// ⭐ Pakai helper bukaWhatsApp() untuk WA Desktop
+// Versi: v2026-09-23-clean2
+// ⭐ Fix: Assign PKL pakai fungsi backend yang sudah ada
+// ⭐ Pakai bukaWhatsApp() untuk WA Desktop
 // =============================================
 
 // ═══════════ STATE ═══════════
@@ -305,65 +305,92 @@ function useCurrentLocationForDUDI() {
 function loadAssignPKL() {
   showLoading();
   google.script.run
-    .withSuccessHandler(function(bundle) {
-      hideLoading();
-      pklCache = Array.isArray(bundle.pkl) ? bundle.pkl : [];
-      siswaXIICache = (bundle.siswa && bundle.siswa.siswa) ? bundle.siswa.siswa : [];
-      dudiListCache = Array.isArray(bundle.dudi) ? bundle.dudi : [];
-      gtkCache = Array.isArray(bundle.gtk) ? bundle.gtk : [];
-
+    .withSuccessHandler(function(list) {
+      pklCache = Array.isArray(list) ? list : [];
       renderPKLTable();
-      populateDropdownPKLFromBundle();
+      _loadDropdownSiswaXII();
     })
     .withFailureHandler(function(err) {
       hideLoading();
       Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     })
-    .getAssignPKLBundle();
+    .getAllPKL();
 }
 
-function populateDropdownPKLFromBundle() {
-  // ─── Filter kelas ───
-  var kelasList = {};
-  siswaXIICache.forEach(function(s) { if (s.Nama_Kelas) kelasList[s.Nama_Kelas] = true; });
-  var selKelas = document.getElementById('pkl_filter_kelas');
-  if (selKelas) {
-    selKelas.innerHTML = '<option value="">-- Semua Kelas XII --</option>';
-    Object.keys(kelasList).sort().forEach(function(k) {
-      var opt = document.createElement('option');
-      opt.value = k; opt.textContent = k;
-      selKelas.appendChild(opt);
-    });
-  }
-  populateDropdownSiswa(siswaXIICache);
+function _loadDropdownSiswaXII() {
+  google.script.run
+    .withSuccessHandler(function(res) {
+      siswaXIICache = (res && res.siswa) ? res.siswa : [];
+      var kelasList = (res && res.kelasList) ? res.kelasList : [];
 
-  // ─── DUDI ───
-  var selDudi = document.getElementById('pkl_dudi');
-  if (selDudi) {
-    selDudi.innerHTML = '<option value="">-- Pilih DUDI --</option>';
-    dudiListCache.forEach(function(d) {
-      var opt = document.createElement('option');
-      opt.value = d.ID_DUDI;
-      opt.textContent = d.Nama_DUDI + ' (' + d.ID_DUDI + ')';
-      selDudi.appendChild(opt);
-    });
-  }
+      var selKelas = document.getElementById('pkl_filter_kelas');
+      if (selKelas) {
+        selKelas.innerHTML = '<option value="">-- Semua Kelas XII --</option>';
+        kelasList.forEach(function(k) {
+          var opt = document.createElement('option');
+          opt.value = k;
+          opt.textContent = k;
+          selKelas.appendChild(opt);
+        });
+      }
+      populateDropdownSiswa(siswaXIICache);
+      _loadDropdownDUDI();
+    })
+    .withFailureHandler(function(err) {
+      console.error('[PKL] Gagal load siswa XII:', err);
+      _loadDropdownDUDI();
+    })
+    .getSiswaXII();
+}
 
-  // ─── GTK (Pembimbing Sekolah) ───
-  var selPemb = document.getElementById('pkl_pembimbing');
-  if (selPemb) {
-    if (gtkCache.length === 0) {
-      selPemb.innerHTML = '<option value="">-- Tidak ada guru --</option>';
-    } else {
-      selPemb.innerHTML = '<option value="">-- Pilih Guru Pembimbing (' + gtkCache.length + ' guru) --</option>';
-      gtkCache.forEach(function(g) {
-        var opt = document.createElement('option');
-        opt.value = g.NBM;
-        opt.textContent = g.Nama_GTK + ' (NBM: ' + g.NBM + ')';
-        selPemb.appendChild(opt);
-      });
-    }
-  }
+function _loadDropdownDUDI() {
+  google.script.run
+    .withSuccessHandler(function(list) {
+      dudiListCache = Array.isArray(list) ? list : [];
+      var sel = document.getElementById('pkl_dudi');
+      if (sel) {
+        sel.innerHTML = '<option value="">-- Pilih DUDI --</option>';
+        dudiListCache.forEach(function(d) {
+          var opt = document.createElement('option');
+          opt.value = d.ID_DUDI;
+          opt.textContent = d.Nama_DUDI + ' (' + d.ID_DUDI + ')';
+          sel.appendChild(opt);
+        });
+      }
+      _loadDropdownGTK();
+    })
+    .withFailureHandler(function(err) {
+      console.error('[PKL] Gagal load DUDI:', err);
+      _loadDropdownGTK();
+    })
+    .getAllDUDI();
+}
+
+function _loadDropdownGTK() {
+  google.script.run
+    .withSuccessHandler(function(list) {
+      gtkCache = Array.isArray(list) ? list : [];
+      var sel = document.getElementById('pkl_pembimbing');
+      if (sel) {
+        if (gtkCache.length === 0) {
+          sel.innerHTML = '<option value="">-- Tidak ada guru --</option>';
+        } else {
+          sel.innerHTML = '<option value="">-- Pilih Guru Pembimbing (' + gtkCache.length + ' guru) --</option>';
+          gtkCache.forEach(function(g) {
+            var opt = document.createElement('option');
+            opt.value = g.NBM;
+            opt.textContent = g.Nama_GTK + ' (NBM: ' + g.NBM + ')';
+            sel.appendChild(opt);
+          });
+        }
+      }
+      hideLoading();
+    })
+    .withFailureHandler(function(err) {
+      console.error('[PKL] Gagal load GTK:', err);
+      hideLoading();
+    })
+    .getGTKList();
 }
 
 function populateDropdownSiswa(siswaList) {
