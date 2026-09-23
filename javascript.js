@@ -441,20 +441,52 @@ function handleLoginAdmin(e) {
   google.script.run
     .withSuccessHandler(function(res) {
       hideLoading();
-      if (res && res.status && res.role === 'Admin') {
+
+      // ⭐ Terima Admin & AdminPKL
+      if (res && res.status && (res.role === 'Admin' || res.role === 'AdminPKL')) {
         currentUser = res;
-        setupRoleUI('Admin');
-        Swal.fire({ icon: 'success', title: 'Berhasil Masuk', text: 'Selamat datang, Admin', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+        setupRoleUI(res.role);
+
+        var greeting = res.role === 'AdminPKL'
+          ? 'Selamat datang, Admin PKL'
+          : 'Selamat datang, Admin';
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil Masuk',
+          text: greeting,
+          timer: 1500,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
-        initAdmin();
+
+        // Init berdasarkan role
+        if (res.role === 'AdminPKL') {
+          initAdminPKL();
+        } else {
+          initAdmin();
+        }
       } else {
-        Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Halaman ini khusus Admin.', confirmButtonColor: '#10b981' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Akses Ditolak',
+          text: 'Halaman ini khusus Admin.',
+          confirmButtonColor: '#10b981'
+        });
       }
     })
     .withFailureHandler(function(err) {
       hideLoading();
-      Swal.fire({ icon: 'error', title: 'Login Gagal', text: err.message || 'Terjadi kesalahan', confirmButtonColor: '#10b981' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Gagal',
+        text: err.message || 'Terjadi kesalahan',
+        confirmButtonColor: '#10b981'
+      });
     })
     .doLogin(u, p);
 }
