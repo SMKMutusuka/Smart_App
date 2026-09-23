@@ -1,6 +1,7 @@
 // =============================================
 // JAVASCRIPT UTAMA — Login, Navigasi, Dashboard
 // File: javascript.js
+// Versi: v2026-09-23-final
 // =============================================
 
 // ===== GLOBAL STATE =====
@@ -101,151 +102,80 @@ function formatWaNumber(phoneNumber) {
   return cleaned;
 }
 
-function openWhatsApp(phoneNumber) {
-  if (!phoneNumber) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Tersedia', text: 'Siswa ini belum memiliki nomor WhatsApp.' });
+// =============================================
+// ⭐ HELPER: BUKA WHATSAPP (Desktop di PC, App di HP)
+// =============================================
+function bukaWhatsApp(nomor, pesan, namaPenerima) {
+  if (!nomor) {
+    Swal.fire({ icon: 'warning', title: 'Nomor Kosong', text: 'Nomor WhatsApp belum terdaftar.' });
     return;
   }
-  var formatted = formatWaNumber(phoneNumber);
+
+  var formatted = formatWaNumber(nomor);
   if (!formatted) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Valid', text: 'Nomor WhatsApp tidak valid (minimal 10 digit).' });
+    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit angka.' });
     return;
   }
-  var url = 'https://wa.me/' + formatted;
+
+  var text = pesan ? encodeURIComponent(pesan) : '';
+  var waMeUrl = 'https://wa.me/' + formatted + (text ? '?text=' + text : '');
+  var waDesktopUrl = 'whatsapp://send?phone=' + formatted + (text ? '&text=' + text : '');
+
   var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // HP → langsung ke app WhatsApp
   if (isMobile) {
-    window.open(url, '_blank');
-  } else {
-    Swal.fire({
-      title: 'Buka WhatsApp?',
-      text: 'Anda akan diarahkan ke WhatsApp Web untuk menghubungi nomor ' + phoneNumber,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Buka',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#25D366'
-    }).then(function(result) {
-      if (result.isConfirmed) window.open(url, '_blank');
-    });
+    window.location.href = waMeUrl;
+    return;
   }
-}
 
-// =============================================
-// LOGIN DUDI — Navigasi halaman
-// =============================================
-function showLoginDUDI() {
-  var page = document.getElementById('login-dudi-page');
-  var main = document.getElementById('login-page');
-  if (main) main.classList.add('hidden');
-  if (page) page.classList.remove('hidden');
-  setTimeout(function() {
-    var inp = document.getElementById('pemb_kode');
-    if (inp && !inp.value) inp.focus();
-  }, 200);
-}
+  // PC → konfirmasi → WhatsApp Desktop dulu, fallback ke WA Web
+  var konfirmasiText = namaPenerima
+    ? 'Pesan akan dikirim ke <strong>' + escapeHtml(namaPenerima) + '</strong><br>(' + nomor + ')'
+    : 'Pesan akan dikirim ke <strong>' + nomor + '</strong>';
 
-function showLoginUtama() {
-  var page = document.getElementById('login-dudi-page');
-  var main = document.getElementById('login-page');
-  if (page) page.classList.add('hidden');
-  if (main) main.classList.remove('hidden');
-  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
-}
+  Swal.fire({
+    title: 'Kirim ke WhatsApp?',
+    html: konfirmasiText + '<br><br><small style="color:#94a3b8;">Jika WhatsApp Desktop terinstall, akan terbuka otomatis. Kalau tidak, akan buka WhatsApp Web.</small>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#25D366'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
 
-// =============================================
-// RIPPLE EFFECT
-// =============================================
-function addRippleEffect() {
-  if (window._rippleInitialized) return;
-  window._rippleInitialized = true;
+    var desktopOpened = false;
+    var fallbackTimer = setTimeout(function() {
+      if (!desktopOpened) {
+        window.open(waMeUrl, '_blank');
+      }
+    }, 1500);
 
-  document.addEventListener('click', function(e) {
-    var link = e.target.closest('.sidebar-menu li a');
-    if (!link) return;
+    function onVisibilityChange() {
+      if (document.hidden) {
+        desktopOpened = true;
+        clearTimeout(fallbackTimer);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
-    var ripple = document.createElement('span');
-    ripple.className = 'ripple';
-
-    var rect = link.getBoundingClientRect();
-    var size = Math.max(rect.width, rect.height);
-    var x = e.clientX - rect.left - size / 2;
-    var y = e.clientY - rect.top - size / 2;
-
-    ripple.style.width = ripple.style.height = size + 'px';
-    ripple.style.left = x + 'px';
-    ripple.style.top = y + 'px';
-
-    link.appendChild(ripple);
-
-    setTimeout(function() {
-      if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
-    }, 600);
+    try {
+      window.location.href = waDesktopUrl;
+    } catch (e) {}
   });
 }
 
 // =============================================
-// GPS AKURAT — Multi-sampling
+// ⭐ ALIAS: openWhatsApp & kirimWaKeNomor
 // =============================================
-function getAccuratePosition() {
-  return new Promise(function(resolve, reject) {
-    if (!navigator.geolocation) {
-      reject(new Error('GPS tidak didukung browser/perangkat'));
-      return;
-    }
+function openWhatsApp(phoneNumber, namaPenerima) {
+  bukaWhatsApp(phoneNumber, null, namaPenerima || null);
+}
 
-    var samples = [];
-    var bestReading = null;
-    var attempts = 0;
-    var maxAttempts = 5;
-    var targetAccuracy = 25;
-    var timeoutMs = 15000;
-    var startTime = Date.now();
-    var done = false;
-
-    function finalize() {
-      if (done) return;
-      done = true;
-      try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
-
-      if (bestReading) resolve(bestReading);
-      else reject(new Error('GPS gagal terkunci. Coba di area terbuka dan tunggu beberapa detik.'));
-    }
-
-    var watchId = navigator.geolocation.watchPosition(
-      function(pos) {
-        var acc = pos.coords.accuracy;
-        var reading = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          acc: acc,
-          ts: pos.timestamp,
-          samples: samples.length + 1
-        };
-        samples.push(reading);
-
-        if (!bestReading || acc < bestReading.acc) bestReading = reading;
-        attempts++;
-
-        if (acc <= targetAccuracy) { finalize(); return; }
-        if (attempts >= maxAttempts) { finalize(); return; }
-        if (Date.now() - startTime > timeoutMs) { finalize(); return; }
-      },
-      function(err) {
-        if (bestReading) { finalize(); return; }
-        var msg = 'Gagal baca GPS.';
-        if (err.code === 1) msg = 'Izin lokasi diblokir. Izinkan akses lokasi di browser.';
-        else if (err.code === 2) msg = 'Sinyal GPS tidak ditemukan. Pastikan Lokasi HP aktif.';
-        else if (err.code === 3) msg = 'Waktu pencarian GPS habis. Coba lagi.';
-        finalize();
-        reject(new Error(msg));
-      },
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
-    );
-
-    setTimeout(function() {
-      if (!done) finalize();
-    }, timeoutMs + 1000);
-  });
+function kirimWaKeNomor(nomor, pesan, namaPenerima) {
+  bukaWhatsApp(nomor, pesan, namaPenerima || null);
 }
 
 // =============================================
@@ -268,20 +198,6 @@ function buildWaMessage(namaSiswa, namaKelas, tanggal, status, keterangan, namaS
          "- " + sekolah;
 }
 
-function kirimWaKeNomor(nomor, pesan) {
-  if (!nomor) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Kosong', text: 'Nomor WhatsApp belum terdaftar.' });
-    return;
-  }
-  var formatted = formatWaNumber(nomor);
-  if (!formatted) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit angka.' });
-    return;
-  }
-  var url = 'https://wa.me/' + formatted + '?text=' + encodeURIComponent(pesan);
-  window.open(url, '_blank');
-}
-
 function kirimWaWaliSiswa(nis, nama, kelas, tanggal, status, keterangan) {
   showLoading();
   google.script.run
@@ -293,7 +209,7 @@ function kirimWaWaliSiswa(nis, nama, kelas, tanggal, status, keterangan) {
         return;
       }
       var msg = buildWaMessage(nama, kelas, tanggal, status, keterangan);
-      kirimWaKeNomor(waWali, msg);
+      kirimWaKeNomor(waWali, msg, nama);
     })
     .withFailureHandler(function(err) {
       hideLoading();
@@ -313,7 +229,7 @@ function kirimWaSiswaSendiri(nis, nama, kelas, tanggal, status, keterangan) {
         return;
       }
       var msg = buildWaMessage(nama, kelas, tanggal, status, keterangan);
-      kirimWaKeNomor(waSiswa, msg);
+      kirimWaKeNomor(waSiswa, msg, nama);
     })
     .withFailureHandler(function(err) {
       hideLoading();
@@ -322,6 +238,9 @@ function kirimWaSiswaSendiri(nis, nama, kelas, tanggal, status, keterangan) {
     .getWhatsappSiswa(nis);
 }
 
+// =============================================
+// ⭐ LOAD WA NOTIF SECTION — Support BelumAbsen
+// =============================================
 function loadWaNotifSection(startDate, endDate) {
   var tanggal = startDate || todayLocalISO();
   var container = document.getElementById('wa-notif-container');
@@ -352,20 +271,15 @@ function loadWaNotifSection(startDate, endDate) {
         'Izin': 'background:linear-gradient(135deg,#f59e0b,#d97706);'
       };
 
-            var htmlBuffer = data.map(function(s) {
+      var htmlBuffer = data.map(function(s) {
         var tanggalDisplay = formatDateDisplay(s.Tanggal);
-        var statusColorMap = {
-          'Alpa': 'background:linear-gradient(135deg,#ef4444,#dc2626);',
-          'Sakit': 'background:linear-gradient(135deg,#3b82f6,#2563eb);',
-          'Izin': 'background:linear-gradient(135deg,#f59e0b,#d97706);'
-        };
         var badgeStyle = statusColorMap[s.Status] || 'background:#94a3b8;';
         var hasWaWali = s.WA_Wali && s.WA_Wali.length >= 10;
         var hasWaSiswa = s.WA_Siswa && s.WA_Siswa.length >= 10;
 
-        // ⭐ BADGE "BELUM ABSEN" — letak di sini
+        // ⭐ Badge khusus untuk siswa yang belum absen (auto-detect)
         var belumAbsenBadge = s.BelumAbsen
-          ? '<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px;border:1px dashed #fff;">⏰ BELUM ABSEN</span>'
+          ? '<span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px;border:1.5px dashed #fff;">⏰ BELUM ABSEN</span>'
           : '';
 
         var btnWali = hasWaWali
@@ -382,7 +296,7 @@ function loadWaNotifSection(startDate, endDate) {
           '<div class="wa-notif-info">' +
             '<div class="wa-notif-name">' +
               '<span class="wa-notif-badge" style="' + badgeStyle + '">' + s.Status + '</span>' +
-              belumAbsenBadge +                                             // ⭐ BADGE DI SINI
+              belumAbsenBadge +
               ' ' + escapeHtml(s.Nama_Siswa) +
             '</div>' +
             '<div class="wa-notif-meta">' +
@@ -686,7 +600,6 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-pengaturan-gtk') showPengaturanGTK();
   if (pageId === 'page-ai-guru' && typeof initAIGuruPage === 'function') initAIGuruPage();
   if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') loadApprovalJurnalGuru();
-  if (pageId === 'page-monitoring-pkl-guru' && typeof loadMonitoringPKLGuru === 'function') loadMonitoringPKLGuru();
 }
 
 function initAdmin() {
@@ -737,7 +650,6 @@ function destroyCharts() {
 }
 
 function loadDashboardCharts(startDate, endDate) {
-  // ⭐ FIX: kalau tidak ada argumen, ambil dari input tanggal (default hari ini)
   if (!startDate) {
     var dashInput = document.getElementById('dash_date');
     startDate = (dashInput && dashInput.value) ? dashInput.value : todayLocalISO();
@@ -783,6 +695,7 @@ function loadDashboardCharts(startDate, endDate) {
     })
     .getDashboardAdmin(startDate, endDate);
 }
+
 function renderDashStats(data) {
   data = data || {};
   var siswaRekap = data.siswaRekap || data.totalRekap || { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
@@ -1479,10 +1392,10 @@ function renderWhatsappAdminTable() {
       var hasWaWali = waWali && waWali.length >= 10;
 
       var waSiswaBtn = hasWaSiswa
-        ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waSiswa + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
+        ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waSiswa + '\', \'' + escapeHtml(s.Nama_Siswa).replace(/'/g, "\\'") + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
         : '<span class="wa-number empty">-</span>';
       var waWaliBtn = hasWaWali
-        ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waWali + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
+        ? '<button class="btn btn-wa btn-sm" style="min-height:28px;padding:0.2em 0.8em;font-size:11px;" onclick="openWhatsApp(\'' + waWali + '\', \'' + escapeHtml(s.Nama_Siswa).replace(/'/g, "\\'") + '\')"><i class="fab fa-whatsapp"></i> Chat</button>'
         : '<span class="wa-number empty">-</span>';
 
       htmlBuffer[i] = '<tr>' +
@@ -1866,6 +1779,102 @@ function handleGantiPasswordGTK(e) {
 }
 
 // =============================================
+// RIPPLE EFFECT
+// =============================================
+function addRippleEffect() {
+  if (window._rippleInitialized) return;
+  window._rippleInitialized = true;
+
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.sidebar-menu li a');
+    if (!link) return;
+
+    var ripple = document.createElement('span');
+    ripple.className = 'ripple';
+
+    var rect = link.getBoundingClientRect();
+    var size = Math.max(rect.width, rect.height);
+    var x = e.clientX - rect.left - size / 2;
+    var y = e.clientY - rect.top - size / 2;
+
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+
+    link.appendChild(ripple);
+
+    setTimeout(function() {
+      if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+    }, 600);
+  });
+}
+
+// =============================================
+// GPS AKURAT — Multi-sampling
+// =============================================
+function getAccuratePosition() {
+  return new Promise(function(resolve, reject) {
+    if (!navigator.geolocation) {
+      reject(new Error('GPS tidak didukung browser/perangkat'));
+      return;
+    }
+
+    var samples = [];
+    var bestReading = null;
+    var attempts = 0;
+    var maxAttempts = 5;
+    var targetAccuracy = 25;
+    var timeoutMs = 15000;
+    var startTime = Date.now();
+    var done = false;
+
+    function finalize() {
+      if (done) return;
+      done = true;
+      try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+
+      if (bestReading) resolve(bestReading);
+      else reject(new Error('GPS gagal terkunci. Coba di area terbuka dan tunggu beberapa detik.'));
+    }
+
+    var watchId = navigator.geolocation.watchPosition(
+      function(pos) {
+        var acc = pos.coords.accuracy;
+        var reading = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: acc,
+          ts: pos.timestamp,
+          samples: samples.length + 1
+        };
+        samples.push(reading);
+
+        if (!bestReading || acc < bestReading.acc) bestReading = reading;
+        attempts++;
+
+        if (acc <= targetAccuracy) { finalize(); return; }
+        if (attempts >= maxAttempts) { finalize(); return; }
+        if (Date.now() - startTime > timeoutMs) { finalize(); return; }
+      },
+      function(err) {
+        if (bestReading) { finalize(); return; }
+        var msg = 'Gagal baca GPS.';
+        if (err.code === 1) msg = 'Izin lokasi diblokir. Izinkan akses lokasi di browser.';
+        else if (err.code === 2) msg = 'Sinyal GPS tidak ditemukan. Pastikan Lokasi HP aktif.';
+        else if (err.code === 3) msg = 'Waktu pencarian GPS habis. Coba lagi.';
+        finalize();
+        reject(new Error(msg));
+      },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
+    );
+
+    setTimeout(function() {
+      if (!done) finalize();
+    }, timeoutMs + 1000);
+  });
+}
+
+// =============================================
 // LOGOUT
 // =============================================
 function logout() {
@@ -1921,18 +1930,35 @@ function eksekusiLogout() {
 }
 
 // =============================================
+// LOGIN DUDI — Navigasi halaman
+// =============================================
+function showLoginDUDI() {
+  var page = document.getElementById('login-dudi-page');
+  var main = document.getElementById('login-page');
+  if (main) main.classList.add('hidden');
+  if (page) page.classList.remove('hidden');
+  setTimeout(function() {
+    var inp = document.getElementById('pemb_kode');
+    if (inp && !inp.value) inp.focus();
+  }, 200);
+}
+
+function showLoginUtama() {
+  var page = document.getElementById('login-dudi-page');
+  var main = document.getElementById('login-page');
+  if (page) page.classList.add('hidden');
+  if (main) main.classList.remove('hidden');
+  if (typeof switchLoginTab === 'function') switchLoginTab('admin');
+}
+
+// =============================================
 // EVENT LISTENERS
 // =============================================
 document.addEventListener('DOMContentLoaded', function() {
   initDOMCache();
   addRippleEffect();
 
-  // ⭐ AUTO-LOGIN PEMBIMBING DIMATIKAN
-  // Biar admin/guru/siswa bisa login kapan saja tanpa "kejebak" di dashboard pembimbing.
-  // Kalau mau aktifkan lagi: uncomment baris di bawah.
-  // if (typeof cobaAutoLoginPembimbing === 'function' && cobaAutoLoginPembimbing()) return;
-
-  // ⭐ Cek hash #pembimbing=KODE — HANYA kalau user buka link share dari DUDI
+  // Cek hash #pembimbing=KODE — hanya kalau user buka link share dari DUDI
   if (window.location.hash && window.location.hash.indexOf('#pembimbing=') === 0) {
     if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
   }
@@ -1967,65 +1993,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
-// ⭐ Helper terpusat: buka WhatsApp (Desktop di PC, App di HP, fallback WA Web)
-function bukaWhatsApp(nomor, pesan, namaPenerima) {
-  if (!nomor) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Kosong', text: 'Nomor WhatsApp belum terdaftar.' });
-    return;
-  }
-
-  var formatted = formatWaNumber(nomor);
-  if (!formatted) {
-    Swal.fire({ icon: 'warning', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit angka.' });
-    return;
-  }
-
-  var text = pesan ? encodeURIComponent(pesan) : '';
-  var waMeUrl = 'https://wa.me/' + formatted + (text ? '?text=' + text : '');
-  var waDesktopUrl = 'whatsapp://send?phone=' + formatted + (text ? '&text=' + text : '');
-
-  var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  // ⭐ HP → langsung buka app WhatsApp
-  if (isMobile) {
-    window.location.href = waMeUrl;
-    return;
-  }
-
-  // ⭐ PC → coba WhatsApp Desktop dulu, fallback ke WA Web
-  var konfirmasiText = namaPenerima
-    ? 'Pesan akan dikirim ke <strong>' + escapeHtml(namaPenerima) + '</strong><br>(' + nomor + ')'
-    : 'Pesan akan dikirim ke <strong>' + nomor + '</strong>';
-
-  Swal.fire({
-    title: 'Kirim ke WhatsApp?',
-    html: konfirmasiText + '<br><br><small style="color:#94a3b8;">Jika WhatsApp Desktop terinstall, akan terbuka otomatis. Kalau tidak, akan buka WhatsApp Web.</small>',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#25D366'
-  }).then(function(r) {
-    if (!r.isConfirmed) return;
-
-    var desktopOpened = false;
-    var fallbackTimer = setTimeout(function() {
-      if (!desktopOpened) {
-        window.open(waMeUrl, '_blank');
-      }
-    }, 1500);
-
-    function onVisibilityChange() {
-      if (document.hidden) {
-        desktopOpened = true;
-        clearTimeout(fallbackTimer);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    try {
-      window.location.href = waDesktopUrl;
-    } catch (e) {}
-  });
-}
