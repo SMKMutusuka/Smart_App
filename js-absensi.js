@@ -822,130 +822,83 @@ function renderStudentAbsenForm(todayStr) {
 
 // ⭐ Konfirmasi & submit absen pulang (tanpa selfie)
 // ⭐ Konfirmasi & submit absen pulang — GPS only, tanpa selfie
+// =============================================
+// ⭐ KONFIRMASI & SUBMIT ABSEN PULANG
+// Pakai data GPS dari tombol "Dapatkan Lokasi Saya"
+// =============================================
 function konfirmAbsenPulang() {
   if (!currentUser || !currentUser.student) {
     Swal.fire({ icon: 'error', title: 'Error', text: 'Data siswa tidak ditemukan.' });
     return;
   }
 
-  // Loading deteksi GPS
-  Swal.fire({
-    title: 'Mendeteksi Lokasi...',
-    html: '<div style="padding:10px;">' +
-            '<div class="spinner" style="margin:0 auto 12px auto;"></div>' +
-            '<div style="font-size:13px;color:#64748b;font-weight:600;">Mengambil titik GPS untuk verifikasi pulang...</div>' +
-            '<div style="font-size:11px;color:#94a3b8;margin-top:8px;">Pastikan GPS HP dalam mode Akurasi Tinggi</div>' +
-          '</div>',
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    allowEscapeKey: false
-  });
+  var lat = document.getElementById('pulang_lat') ? document.getElementById('pulang_lat').value : '';
+  var lng = document.getElementById('pulang_lng') ? document.getElementById('pulang_lng').value : '';
+  var jarak = document.getElementById('pulang_jarak') ? document.getElementById('pulang_jarak').value : '';
+  var acc = document.getElementById('pulang_acc') ? document.getElementById('pulang_acc').value : '';
 
-  getAccuratePosition()
-    .then(function(reading) {
-      // Ambil info lokasi sekolah untuk hitung jarak
-      google.script.run
-        .withSuccessHandler(function(lokasi) {
-          var jarak = 0;
-          var radius = 100;
-          if (lokasi && lokasi.Latitude && lokasi.Longitude) {
-            var R = 6371000;
-            var dLat = (lokasi.Latitude - reading.lat) * Math.PI / 180;
-            var dLon = (lokasi.Longitude - reading.lng) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(reading.lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
-                    Math.sin(dLon/2) * Math.sin(dLon/2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            jarak = Math.round(R * c);
-            radius = lokasi.Radius_Meter || 100;
-          }
-
-          var radiusToleransi = radius * 2;
-          var warnaJarak = jarak <= radius ? '#10b981' : (jarak <= radiusToleransi ? '#f59e0b' : '#ef4444');
-          var statusJarak = jarak <= radius ? '✅ Dalam area' : (jarak <= radiusToleransi ? '⚠️ Masih dalam toleransi' : '❌ Di luar area');
-
-          // Konfirmasi final
-          Swal.fire({
-            title: 'Konfirmasi Absen Pulang',
-            html: '<div style="text-align:left;font-size:13px;line-height:1.7;">' +
-                    '<div style="background:#ecfdf5;padding:12px;border-radius:10px;margin-bottom:10px;">' +
-                      '<div><strong>📍 GPS:</strong> ' + reading.lat.toFixed(6) + ', ' + reading.lng.toFixed(6) + '</div>' +
-                      '<div><strong>📏 Jarak:</strong> <span style="color:' + warnaJarak + ';font-weight:700;">' + jarak + 'm</span> dari sekolah (radius ' + radius + 'm)</div>' +
-                      '<div><strong>🎯 Akurasi:</strong> ±' + Math.round(reading.acc) + 'm</div>' +
-                      '<div style="margin-top:6px;font-size:12px;color:' + warnaJarak + ';font-weight:700;">' + statusJarak + '</div>' +
-                    '</div>' +
-                    '<div style="font-size:11px;color:#94a3b8;text-align:center;">' +
-                      'Tanpa selfie. Waktu pulang akan tersimpan otomatis.' +
-                    '</div>' +
-                  '</div>',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Absen Pulang',
-            cancelButtonText: 'Batal',
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#64748b'
-          }).then(function(r) {
-            if (!r.isConfirmed) return;
-
-            showLoading();
-            var nisClean = String(currentUser.student.NIS).trim();
-
-            google.script.run
-              .withSuccessHandler(function(msg) {
-                hideLoading();
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Absen Pulang Berhasil',
-                  html: '<div style="font-size:13px;">' + msg + '</div>' +
-                        '<div style="font-size:11px;color:#94a3b8;margin-top:8px;">Terima kasih sudah disiplin hari ini 🎉</div>',
-                  timer: 2500,
-                  showConfirmButton: false,
-                  toast: false
-                });
-                setTimeout(function() { prepareStudentAbsenPage(); }, 1500);
-              })
-              .withFailureHandler(function(err) {
-                hideLoading();
-                Swal.fire({ icon: 'error', title: 'Gagal Absen Pulang', html: '<div style="font-size:13px;">' + err.message + '</div>' });
-              })
-              .submitAbsenPulangSiswa(
-                nisClean,
-                reading.lat,
-                reading.lng,
-                jarak,
-                reading.acc,
-                ''
-              );
-          });
-        })
-        .withFailureHandler(function(err) {
-          Swal.close();
-          Swal.fire({
-            icon: 'error',
-            title: 'Gagal Cek Lokasi',
-            text: 'Tidak bisa verifikasi lokasi sekolah: ' + err.message
-          });
-        })
-        .getLokasiSekolah();
-    })
-    .catch(function(err) {
-      Swal.close();
-      Swal.fire({
-        icon: 'error',
-        title: 'GPS Gagal Terkunci',
-        html: '<div style="font-size:13px;">' + (err.message || 'Tidak bisa mengambil titik lokasi.') + '</div>' +
-              '<div style="font-size:11px;color:#94a3b8;margin-top:10px;line-height:1.5;">' +
-              '<strong>Tips:</strong><br>' +
-              '• Keluar ruangan / dekat jendela<br>' +
-              '• Aktifkan GPS Akurasi Tinggi di pengaturan HP<br>' +
-              '• Tunggu 5-10 detik lalu coba lagi' +
-              '</div>',
-        confirmButtonText: 'Coba Lagi',
-        confirmButtonColor: '#10b981'
-      }).then(function(r) {
-        if (r.isConfirmed) konfirmAbsenPulang();
-      });
+  // ⭐ Validasi: GPS harus sudah diambil
+  if (!lat || !lng) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'GPS Belum Diambil',
+      html: 'Klik tombol <strong>"Dapatkan Lokasi Saya"</strong> terlebih dahulu.<br>' +
+            '<span style="font-size:11px;color:#94a3b8;">Pastikan Anda berada di area sekolah.</span>',
+      confirmButtonColor: '#10b981'
     });
+    return;
+  }
+
+  Swal.fire({
+    title: 'Konfirmasi Absen Pulang',
+    html: '<div style="text-align:left;font-size:13px;line-height:1.7;">' +
+            '<div style="background:#ecfdf5;padding:12px;border-radius:10px;margin-bottom:10px;">' +
+              '<div><strong>📍 GPS:</strong> ' + parseFloat(lat).toFixed(6) + ', ' + parseFloat(lng).toFixed(6) + '</div>' +
+              '<div><strong>📏 Jarak:</strong> ' + (jarak || '-') + 'm dari sekolah</div>' +
+              '<div><strong>🎯 Akurasi:</strong> ±' + (Math.round(parseFloat(acc)) || '-') + 'm</div>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#94a3b8;text-align:center;">' +
+              'Tanpa selfie. Waktu pulang akan tersimpan otomatis.' +
+            '</div>' +
+          '</div>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Absen Pulang',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#64748b'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+
+    showLoading();
+    var nisClean = String(currentUser.student.NIS).trim();
+
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        hideLoading();
+        Swal.fire({
+          icon: 'success',
+          title: 'Absen Pulang Berhasil',
+          html: '<div style="font-size:13px;">' + msg + '</div>' +
+                '<div style="font-size:11px;color:#94a3b8;margin-top:8px;">Terima kasih sudah disiplin hari ini 🎉</div>',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        setTimeout(function() { prepareStudentAbsenPage(); }, 1500);
+      })
+      .withFailureHandler(function(err) {
+        hideLoading();
+        Swal.fire({ icon: 'error', title: 'Gagal Absen Pulang', html: '<div style="font-size:13px;">' + err.message + '</div>' });
+      })
+      .submitAbsenPulangSiswa(
+        nisClean,
+        parseFloat(lat),
+        parseFloat(lng),
+        parseFloat(jarak) || 0,
+        parseFloat(acc) || 0,
+        ''
+      );
+  });
 }
 
 function checkDistanceToClass(lat, lng, accuracy) {
