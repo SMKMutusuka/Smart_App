@@ -1,7 +1,8 @@
 // =============================================
 // JAVASCRIPT UTAMA — Login, Navigasi, Dashboard
 // File: javascript.js
-// Versi: v2026-09-23-final
+// Versi: v2026-09-24-final
+// ⭐ FIX: Race condition dashboard + duplikat request
 // =============================================
 
 // ===== GLOBAL STATE =====
@@ -20,6 +21,10 @@ var dtSiswa = null;
 var searchTimeout = null;
 
 var DOM = {};
+
+// ⭐ Race token — cegah response lama nimpa yang baru
+var _dashboardToken = 0;
+var _approvalToken = 0;
 
 var paginationState = {
   tugasAdmin:    { page: 1, pageSize: 25, data: [] },
@@ -123,13 +128,11 @@ function bukaWhatsApp(nomor, pesan, namaPenerima) {
 
   var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // HP → langsung ke app WhatsApp
   if (isMobile) {
     window.location.href = waMeUrl;
     return;
   }
 
-  // PC → konfirmasi → WhatsApp Desktop dulu, fallback ke WA Web
   var konfirmasiText = namaPenerima
     ? 'Pesan akan dikirim ke <strong>' + escapeHtml(namaPenerima) + '</strong><br>(' + nomor + ')'
     : 'Pesan akan dikirim ke <strong>' + nomor + '</strong>';
@@ -167,9 +170,6 @@ function bukaWhatsApp(nomor, pesan, namaPenerima) {
   });
 }
 
-// =============================================
-// ⭐ ALIAS: openWhatsApp & kirimWaKeNomor
-// =============================================
 function openWhatsApp(phoneNumber, namaPenerima) {
   bukaWhatsApp(phoneNumber, null, namaPenerima || null);
 }
@@ -277,7 +277,6 @@ function loadWaNotifSection(startDate, endDate) {
         var hasWaWali = s.WA_Wali && s.WA_Wali.length >= 10;
         var hasWaSiswa = s.WA_Siswa && s.WA_Siswa.length >= 10;
 
-        // ⭐ Badge khusus untuk siswa yang belum absen (auto-detect)
         var belumAbsenBadge = s.BelumAbsen
           ? '<span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px;border:1.5px dashed #fff;">⏰ BELUM ABSEN</span>'
           : '';
@@ -464,12 +463,12 @@ function handleLoginAdmin(e) {
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
 
-        // Init berdasarkan role
+        // ⭐ FIX: initAdmin() TIDAK dipanggil lagi di sini
+        // (sudah di-handle oleh setupRoleUI → showPage → loadDashboardCharts)
         if (res.role === 'AdminPKL') {
           initAdminPKL();
-        } else {
-          initAdmin();
         }
+        // else: initAdmin() sudah tidak perlu karena setupRoleUI sudah trigger
       } else {
         Swal.fire({
           icon: 'error',
@@ -567,19 +566,15 @@ function setupRoleUI(role) {
     mAdmin.classList.remove('hidden');
 
     if (role === 'AdminPKL') {
-      // ⭐ Sembunyikan menu yang BUKAN PKL
       roleTitle.innerHTML = '<i class="fas fa-user-tie"></i> Admin PKL';
       var fullMenuItems = mAdmin.querySelectorAll('.menu-item-admin-full');
       fullMenuItems.forEach(function(li) { li.classList.add('hidden'); });
 
-      // Tampilkan menu PKL
       var pklMenuItems = mAdmin.querySelectorAll('.menu-item-admin-pkl');
       pklMenuItems.forEach(function(li) { li.classList.remove('hidden'); });
 
-      // Redirect ke Assign PKL (karena Dashboard tidak tersedia)
       showPage('page-pkl-assign', document.querySelector('[data-page="pkl-assign"]'));
     } else {
-      // Admin penuh — tampilkan semua
       roleTitle.innerHTML = '<i class="fas fa-user-shield"></i> Admin Panel';
       var allItems = mAdmin.querySelectorAll('li');
       allItems.forEach(function(li) { li.classList.remove('hidden'); });
@@ -628,7 +623,8 @@ function showPage(pageId, clickedLink) {
   if (sidebar && sidebar.classList.contains('active')) toggleSidebar();
 
   if (pageId === 'page-dashboard-admin') loadDashboardCharts();
-  if (pageId === 'page-approval-admin') { loadApprovalKelasDropdown(); loadApprovalDashboard(); }
+  // ⭐ FIX: loadApprovalDashboard sudah include load kelas di dalamnya (sequential)
+  if (pageId === 'page-approval-admin') loadApprovalDashboard();
   if (pageId === 'page-lokasi-kelas') loadLokasiSekolah();
   if (pageId === 'page-dudi') loadDUDI();
   if (pageId === 'page-pkl-assign') loadAssignPKL();
@@ -651,11 +647,13 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-pengaturan-gtk') showPengaturanGTK();
   if (pageId === 'page-ai-guru' && typeof initAIGuruPage === 'function') initAIGuruPage();
   if (pageId === 'page-approval-jurnal-pkl' && typeof loadApprovalJurnalGuru === 'function') loadApprovalJurnalGuru();
+  if (pageId === 'page-monitoring-pkl-guru' && typeof loadMonitoringPKLGuru === 'function') loadMonitoringPKLGuru();
 }
 
+// ⭐ FIX: initAdmin — tidak lagi panggil loadDashboardCharts (cegah duplikat)
 function initAdmin() {
   refreshAllKelasDropdowns();
-  loadDashboardCharts();
+  // loadDashboardCharts() DIHAPUS — sudah dipanggil via setupRoleUI → showPage
 }
 
 function initSiswa() {
@@ -667,12 +665,8 @@ function initSiswa() {
 
 function initAdminPKL() {
   console.log('[AdminPKL] Init dashboard PKL');
-
-  // Load DUDI + Assign PKL data biar siap
   if (typeof loadDUDI === 'function') loadDUDI();
   if (typeof loadAssignPKL === 'function') loadAssignPKL();
-
-  // Redirect ke halaman Assign PKL (default untuk AdminPKL)
   if (typeof showPage === 'function') {
     showPage('page-pkl-assign', document.querySelector('[data-page="pkl-assign"]'));
   }
@@ -713,19 +707,30 @@ function destroyCharts() {
   if (chartStudentPersonalInstance) { chartStudentPersonalInstance.destroy(); chartStudentPersonalInstance = null; }
 }
 
+// ⭐ loadDashboardCharts — pakai RACE TOKEN
 function loadDashboardCharts(startDate, endDate) {
+  _dashboardToken++;
+  var myToken = _dashboardToken;
+
   if (!startDate) {
     var dashInput = document.getElementById('dash_date');
     startDate = (dashInput && dashInput.value) ? dashInput.value : todayLocalISO();
   }
   if (!endDate) endDate = startDate;
 
-  console.log('[Dashboard] Kirim tanggal:', startDate, '→', endDate);
+  console.log('[Dashboard] Request #' + myToken + ':', startDate, '→', endDate);
 
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
+      // ⭐ Cek token — kalau ada request lebih baru, skip response ini
+      if (myToken !== _dashboardToken) {
+        console.log('[Dashboard] Response #' + myToken + ' STALE — di-skip');
+        return;
+      }
       hideLoading();
+      console.log('[Dashboard] Response #' + myToken + ' dirender');
+
       data = data || {};
       var totalRekap = data.totalRekap || { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
       var trenPerHari = Array.isArray(data.trenPerHari) ? data.trenPerHari : [];
@@ -754,8 +759,9 @@ function loadDashboardCharts(startDate, endDate) {
       loadWaNotifSection(tanggalWA);
     })
     .withFailureHandler(function(err) {
+      if (myToken !== _dashboardToken) return;
       hideLoading();
-      console.error('Gagal load dashboard:', err);
+      console.error('[Dashboard] Gagal load (request #' + myToken + '):', err);
     })
     .getDashboardAdmin(startDate, endDate);
 }
@@ -967,7 +973,7 @@ function loadStudentDashboard() {
               '<i class="fas fa-user-check"></i> Absen Sekarang' +
             '</button>';
         }
-      } 
+      }
 
       paginationState.studentHistory.data = studentAbsens;
       paginationState.studentHistory.page = 1;
@@ -1011,7 +1017,7 @@ function renderStudentHistoryTable() {
 }
 
 // =============================================
-// APPROVAL DASHBOARD
+// APPROVAL DASHBOARD — sequential (anti timeout)
 // =============================================
 function loadApprovalKelasDropdown() {
   google.script.run
@@ -1033,36 +1039,81 @@ function loadApprovalKelasDropdown() {
     .getKelasForFilter();
 }
 
+// ⭐ loadApprovalDashboard — pakai nested sequential (hindari timeout)
 function loadApprovalDashboard() {
+  _approvalToken++;
+  var myToken = _approvalToken;
+
   showLoading();
   var filterKelas = document.getElementById('approval_filter_kelas') ? document.getElementById('approval_filter_kelas').value : '';
 
+  // ⭐ STEP 1: Load kelas dropdown dulu
   google.script.run
-    .withSuccessHandler(function(stats) {
-      stats = stats || { pending: 0, approved: 0, rejected: 0 };
-      animateCounter('approval-pending', stats.pending || 0);
-      animateCounter('approval-approved', stats.approved || 0);
-      animateCounter('approval-rejected', stats.rejected || 0);
-
-      var badge = document.getElementById('approval-badge');
-      if (badge) {
-        if (stats.pending > 0) { badge.textContent = stats.pending; badge.classList.remove('hidden'); }
-        else { badge.classList.add('hidden'); }
+    .withSuccessHandler(function(kelasData) {
+      if (myToken !== _approvalToken) return;
+      var sel = document.getElementById('approval_filter_kelas');
+      if (sel) {
+        var currentVal = sel.value;
+        sel.innerHTML = '<option value="">-- Semua Kelas --</option>';
+        (Array.isArray(kelasData) ? kelasData : []).forEach(function(k) {
+          var opt = document.createElement('option');
+          opt.value = k.ID_Kelas;
+          opt.textContent = k.Nama_Kelas;
+          sel.appendChild(opt);
+        });
+        if (currentVal) sel.value = currentVal;
       }
-    })
-    .withFailureHandler(function(err) { console.error(err); })
-    .getApprovalStats();
 
-  google.script.run
-    .withSuccessHandler(function(pendingList) {
-      hideLoading();
-      renderApprovalList(pendingList);
+      // ⭐ STEP 2: Load stats
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          if (myToken !== _approvalToken) return;
+          stats = stats || { pending: 0, approved: 0, rejected: 0 };
+          animateCounter('approval-pending', stats.pending || 0);
+          animateCounter('approval-approved', stats.approved || 0);
+          animateCounter('approval-rejected', stats.rejected || 0);
+
+          var badge = document.getElementById('approval-badge');
+          if (badge) {
+            if (stats.pending > 0) { badge.textContent = stats.pending; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+          }
+
+          // ⭐ STEP 3: Load pending list
+          google.script.run
+            .withSuccessHandler(function(pendingList) {
+              if (myToken !== _approvalToken) return;
+              hideLoading();
+              renderApprovalList(pendingList);
+            })
+            .withFailureHandler(function(err) {
+              hideLoading();
+              Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+            })
+            .getPendingApprovals(filterKelas);
+        })
+        .withFailureHandler(function(err) {
+          console.error('Stats error:', err);
+          // Lanjut ke STEP 3 walaupun stats gagal
+          google.script.run
+            .withSuccessHandler(function(pendingList) {
+              hideLoading();
+              renderApprovalList(pendingList);
+            })
+            .withFailureHandler(function(e2) {
+              hideLoading();
+              Swal.fire({ icon: 'error', title: 'Error', text: e2.message });
+            })
+            .getPendingApprovals(filterKelas);
+        })
+        .getApprovalStats();
     })
     .withFailureHandler(function(err) {
       hideLoading();
+      console.error('Gagal load kelas:', err);
       Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     })
-    .getPendingApprovals(filterKelas);
+    .getKelasForFilter();
 }
 
 function renderApprovalList(pendingList) {
@@ -2022,7 +2073,6 @@ document.addEventListener('DOMContentLoaded', function() {
   initDOMCache();
   addRippleEffect();
 
-  // Cek hash #pembimbing=KODE — hanya kalau user buka link share dari DUDI
   if (window.location.hash && window.location.hash.indexOf('#pembimbing=') === 0) {
     if (typeof cekHashPembimbing === 'function' && cekHashPembimbing()) return;
   }
