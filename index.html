@@ -9,19 +9,18 @@
   <meta name="apple-mobile-web-app-title" content="Presensi SMK MUTUSUKA">
   <title>SMART MUTUSUKA - System Monitoring & Attendance Response Technology</title>
 
-<!-- ⭐ Open Graph untuk preview WhatsApp / Telegram / Facebook -->
-<meta property="og:title" content="SMART MUTUSUKA - System Monitoring & Attendance Response Technology">
-<meta property="og:description" content="Aplikasi Presensi Digital SMK Muhammadiyah 1 Surakarta">
-<meta property="og:url" content="https://smkmutusuka.github.io/Smart_App/">
-<meta property="og:image" content="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="SMART MUTUSUKA">
+  <meta property="og:title" content="SMART MUTUSUKA - System Monitoring & Attendance Response Technology">
+  <meta property="og:description" content="Aplikasi Presensi Digital SMK Muhammadiyah 1 Surakarta">
+  <meta property="og:url" content="https://smkmutusuka.github.io/Smart_App/">
+  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SMART MUTUSUKA">
 
-<!-- ⭐ Twitter Card (opsional) -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="SMART MUTUSUKA - System Monitoring & Attendance Response Technology">
-<meta name="twitter:description" content="Aplikasi Presensi Digital SMK Muhammadiyah 1 Surakarta">
-<meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="SMART MUTUSUKA - System Monitoring & Attendance Response Technology">
+  <meta name="twitter:description" content="Aplikasi Presensi Digital SMK Muhammadiyah 1 Surakarta">
+  <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
+
   <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
   <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs">
 
@@ -45,12 +44,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
-  <script src="js-pkl.js?v=20260922d"></script>
-  <script src="js-monitoring-pkl.js?v=20260922a"></script>
-  <script src="js-pembimbing.js"></script>
-  <script src="js-approval-pkl-guru.js"></script>
 
-  <!-- LEAFLET untuk peta -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -82,22 +76,21 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
     'getSiswaXII','getAllPKL','savePKL','deletePKL','getPKLByNIS','getPKLByDUDI',
     'cekAbsenPKLHariIni','submitAbsenPKL','getRiwayatAbsenPKL',
     'cekJurnalPKLHariIni','submitJurnalPKL','getRiwayatJurnalPKL',
-    // ⭐ Fungsi pembimbing DUDI (baru)
     'loginPembimbing',
     'getDashboardPembimbingSecure',
     'approveAbsenPembimbingSecure','rejectAbsenPembimbingSecure',
     'approveJurnalDUDISecure','rejectJurnalDUDISecure',
     'resetPinPembimbing',
-    // ⭐ Fungsi pembimbing sekolah (guru)
     'getJurnalPendingGuru','getRiwayatJurnalGuru',
     'approveJurnalSekolah','rejectJurnalSekolah',
     'getStatsJurnalGuru','getSiswaBinaanGuru','getGTKList','getMonitoringBinaanGuru',
-    'submitMonitoringPKL','getRiwayatMonitoringGuru','cekMonitoringHariIni', 'getRiwayatMonitoringGuru',
+    'submitMonitoringPKL','getRiwayatMonitoringGuru','cekMonitoringHariIni',
     'getSiswaBelumAbsen',
     'getSiswaTidakHadirLengkap',
-    'autoMarkAlpaHariIni'
+    'autoMarkAlpaHariIni',
+    'submitAbsenPulangSiswa'
   ];
- 
+
   var FETCH_TIMEOUT_MS = 25000;
 
   function callBackend(fnName, args, onSuccess, onFailure) {
@@ -262,43 +255,8 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
   </div>
   <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
 </div>
+
 <!-- LOGIN DUDI (halaman terpisah) -->
-<div id="login-dudi-page" class="hidden"> 
-  <div class="login-box">
-    <img src="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs" alt="Logo SMK" style="width: 100px; height: auto; margin-bottom: 14px; display: inline-block;">
-    <h2>Login Pembimbing DUDI</h2>
-    <p style="font-size: 12px; color: #64748b;">Monitoring absensi & jurnal siswa PKL</p>
-
-    <form id="loginFormPembimbing" onsubmit="handleLoginPembimbing(event)" autocomplete="off">
-      <div class="form-group" style="text-align: left;">
-        <label for="pemb_kode"><i class="fas fa-key"></i> Kode Akses DUDI</label>
-        <input type="text" id="pemb_kode" class="form-control" required
-               placeholder="Contoh: ABC123"
-               style="text-transform: uppercase; letter-spacing: 2px; font-weight: 700;"
-               maxlength="10">
-      </div>
-      <div class="form-group" style="text-align: left;">
-        <label for="pemb_pin"><i class="fas fa-lock"></i> PIN</label>
-        <input type="password" inputmode="numeric" pattern="[0-9]*" id="pemb_pin"
-               class="form-control" required placeholder="6 digit angka" maxlength="6">
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;font-size:14px;">
-        <i class="fas fa-sign-in-alt"></i> Masuk Dashboard
-      </button>
-    </form>
-
-    <div style="margin-top:16px;font-size:12px;color:#64748b;text-align:center;">
-      <a href="javascript:void(0)" onclick="showLoginUtama()" style="color: var(--primary); font-weight: 700;">
-        ← Kembali ke Login Sekolah
-      </a>
-    </div>
-    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center;">
-      Lupa PIN? Hubungi admin sekolah.
-    </div>
-  </div>
-  <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
-</div>
-<!-- ⭐ LOGIN DUDI (halaman terpisah) -->
 <div id="login-dudi-page" class="hidden">
   <div class="login-box">
     <img src="https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs" alt="Logo SMK" style="width: 100px; height: auto; margin-bottom: 14px; display: inline-block;">
@@ -329,7 +287,8 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
     </div>
   </div>
   <div class="login-footer">Develope by <strong>@JK_HARINTO</strong></div>
-</div>  
+</div>
+
 <!-- APP LAYOUT -->
 <div id="app-layout" class="hidden">
   <div class="topbar">
@@ -350,7 +309,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
     </div>
 
     <!-- Menu ADMIN -->
-        <!-- Menu ADMIN -->
     <ul class="sidebar-menu" id="menu-admin">
       <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-dashboard-admin', this); return false;" class="active" data-page="dashboard-admin"><i class="fas fa-chart-line"></i> Beranda Admin</a></li>
       <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-approval-admin', this); return false;" data-page="approval-admin"><i class="fas fa-check-double"></i> Approval Absensi <span id="approval-badge" class="hidden" style="background:#ef4444;color:#fff;padding:1px 8px;border-radius:12px;font-size:10px;font-weight:700;margin-left:auto;">0</span></a></li>
@@ -365,7 +323,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
       <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-whatsapp-admin', this); return false;" data-page="whatsapp-admin"><i class="fab fa-whatsapp"></i> Monitoring WhatsApp</a></li>
       <li class="menu-item-admin-full"><a href="#" onclick="showPage('page-pengaturan-admin', this); return false;" data-page="pengaturan-admin"><i class="fas fa-cog"></i> Pengaturan Akun</a></li>
       <li style="margin-top: auto;"><a href="#" onclick="logout(); return false;" style="color:#ef4444;"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
-    </ul>
     </ul>
 
     <!-- Menu GTK -->
@@ -431,6 +388,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
       <h1 class="page-title"><i class="fas fa-clipboard-check" style="color:var(--primary);"></i> Approval Jurnal PKL Siswa Binaan</h1>
       <div id="guru-jurnal-content"></div>
     </section>
+
     <!-- MONITORING PKL GURU -->
     <section id="page-monitoring-pkl-guru" class="page hidden">
       <h1 class="page-title"><i class="fas fa-user-check" style="color:var(--primary);"></i> Monitoring PKL Binaan</h1>
@@ -441,6 +399,7 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
         </div>
       </div>
     </section>
+
     <!-- DASHBOARD ADMIN -->
     <section id="page-dashboard-admin" class="page">
       <h1 class="page-title">Selamat Datang di SMART MUTUSUKA (Sistem Monitoring Absensi Responsif dan Terintegrasi)</h1>
@@ -843,75 +802,75 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
 
       <div class="card">
         <form id="formAssignPKL" onsubmit="simpanAssignPKL(event)">
-  <input type="hidden" id="pkl_edit_mode" value="false">
+          <input type="hidden" id="pkl_edit_mode" value="false">
 
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
-    <div class="form-group" style="flex:0 0 200px;">
-      <label for="pkl_filter_kelas"><i class="fas fa-filter"></i> Filter Kelas</label>
-      <select id="pkl_filter_kelas" class="form-control" onchange="filterSiswaByKelas()">
-        <option value="">-- Semua Kelas XII --</option>
-      </select>
-    </div>
-    <div class="form-group" style="flex:1;min-width:250px;">
-      <label for="pkl_siswa"><i class="fas fa-user-graduate"></i> Siswa Kelas XII</label>
-      <select id="pkl_siswa" class="form-control" required>
-        <option value="">-- Pilih Siswa XII --</option>
-      </select>
-    </div>
-  </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div class="form-group" style="flex:0 0 200px;">
+              <label for="pkl_filter_kelas"><i class="fas fa-filter"></i> Filter Kelas</label>
+              <select id="pkl_filter_kelas" class="form-control" onchange="filterSiswaByKelas()">
+                <option value="">-- Semua Kelas XII --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:250px;">
+              <label for="pkl_siswa"><i class="fas fa-user-graduate"></i> Siswa Kelas XII</label>
+              <select id="pkl_siswa" class="form-control" required>
+                <option value="">-- Pilih Siswa XII --</option>
+              </select>
+            </div>
+          </div>
 
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
-    <div class="form-group" style="flex:1;min-width:220px;">
-      <label for="pkl_dudi"><i class="fas fa-building"></i> DUDI / Tempat PKL</label>
-      <select id="pkl_dudi" class="form-control" required>
-        <option value="">-- Pilih DUDI --</option>
-      </select>
-    </div>
-    <div class="form-group" style="flex:1;min-width:220px;">
-      <label for="pkl_pembimbing"><i class="fas fa-chalkboard-teacher"></i> Pembimbing Sekolah (Guru)</label>
-      <select id="pkl_pembimbing" class="form-control" required>
-        <option value="">-- Pilih Guru Pembimbing --</option>
-      </select>
-    </div>
-  </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:220px;">
+              <label for="pkl_dudi"><i class="fas fa-building"></i> DUDI / Tempat PKL</label>
+              <select id="pkl_dudi" class="form-control" required>
+                <option value="">-- Pilih DUDI --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:220px;">
+              <label for="pkl_pembimbing"><i class="fas fa-chalkboard-teacher"></i> Pembimbing Sekolah (Guru)</label>
+              <select id="pkl_pembimbing" class="form-control" required>
+                <option value="">-- Pilih Guru Pembimbing --</option>
+              </select>
+            </div>
+          </div>
 
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
-    <div class="form-group" style="flex:1;min-width:150px;">
-      <label for="pkl_mulai"><i class="fas fa-calendar-check"></i> Tanggal Mulai</label>
-      <input type="date" id="pkl_mulai" class="form-control" required>
-    </div>
-    <div class="form-group" style="flex:1;min-width:150px;">
-      <label for="pkl_selesai"><i class="fas fa-calendar-times"></i> Tanggal Selesai</label>
-      <input type="date" id="pkl_selesai" class="form-control" required>
-    </div>
-    <div class="form-group" style="flex:0 0 130px;">
-      <label for="pkl_status">Status</label>
-      <select id="pkl_status" class="form-control">
-        <option value="Aktif">Aktif</option>
-        <option value="Selesai">Selesai</option>
-      </select>
-    </div>
-  </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:150px;">
+              <label for="pkl_mulai"><i class="fas fa-calendar-check"></i> Tanggal Mulai</label>
+              <input type="date" id="pkl_mulai" class="form-control" required>
+            </div>
+            <div class="form-group" style="flex:1;min-width:150px;">
+              <label for="pkl_selesai"><i class="fas fa-calendar-times"></i> Tanggal Selesai</label>
+              <input type="date" id="pkl_selesai" class="form-control" required>
+            </div>
+            <div class="form-group" style="flex:0 0 130px;">
+              <label for="pkl_status">Status</label>
+              <select id="pkl_status" class="form-control">
+                <option value="Aktif">Aktif</option>
+                <option value="Selesai">Selesai</option>
+              </select>
+            </div>
+          </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan PKL</button>
-    <button type="button" class="btn btn-outline" onclick="resetFormPKL()"><i class="fas fa-times"></i> Batal</button>
-  </div>
-</form>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan PKL</button>
+            <button type="button" class="btn btn-outline" onclick="resetFormPKL()"><i class="fas fa-times"></i> Batal</button>
+          </div>
+        </form>
       </div>
 
       <div class="card">
         <div class="chart-card-title" style="margin-bottom:14px;"><i class="fas fa-list"></i> Daftar Siswa PKL</div>
         <div class="laporan-scroll">
           <table class="table-laporan">
-  <thead>
-    <tr>
-      <th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>DUDI</th>
-      <th>Pembimbing Sekolah</th><th>Periode</th><th>Status</th><th>Aksi</th>
-    </tr>
-  </thead>
-  <tbody id="tbodyPKL"></tbody>
-</table>
+            <thead>
+              <tr>
+                <th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>DUDI</th>
+                <th>Pembimbing Sekolah</th><th>Periode</th><th>Status</th><th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPKL"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -1470,15 +1429,16 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
   </main>
 </div>
 
-<!-- ⭐ JAVASCRIPT LOKAL -->
+<!-- ⭐ JAVASCRIPT LOKAL — load sekali saja, di akhir -->
 <script src="javascript.js"></script>
 <script src="js-absensi.js"></script>
 <script src="js-maps.js"></script>
 <script src="js-tugas.js"></script>
 <script src="js-ai-guru.js"></script>
-<script src="js-pkl.js?v=20260922b"></script>
-<script src="js-pembimbing.js"></script>
-<script src="js-approval-pkl-guru.js"></script>
+<script src="js-pkl.js?v=20260924"></script>
+<script src="js-pembimbing.js?v=20260924"></script>
+<script src="js-approval-pkl-guru.js?v=20260924"></script>
+<script src="js-monitoring-pkl.js?v=20260924"></script>
 
 </body>
 </html>
