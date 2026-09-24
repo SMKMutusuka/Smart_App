@@ -1,8 +1,8 @@
 // =============================================
 // JAVASCRIPT UTAMA — Login, Navigasi, Dashboard
 // File: javascript.js
-// Versi: v2026-09-24-final
-// ⭐ FIX: Race condition dashboard + duplikat request
+// Versi: v2026-09-24-clean-final
+// ⭐ FIX: renderApprovalList (nested if rusak) + race token
 // =============================================
 
 // ===== GLOBAL STATE =====
@@ -22,7 +22,6 @@ var searchTimeout = null;
 
 var DOM = {};
 
-// ⭐ Race token — cegah response lama nimpa yang baru
 var _dashboardToken = 0;
 var _approvalToken = 0;
 
@@ -108,7 +107,7 @@ function formatWaNumber(phoneNumber) {
 }
 
 // =============================================
-// ⭐ HELPER: BUKA WHATSAPP (Desktop di PC, App di HP)
+// HELPER: BUKA WHATSAPP
 // =============================================
 function bukaWhatsApp(nomor, pesan, namaPenerima) {
   if (!nomor) {
@@ -139,7 +138,7 @@ function bukaWhatsApp(nomor, pesan, namaPenerima) {
 
   Swal.fire({
     title: 'Kirim ke WhatsApp?',
-    html: konfirmasiText + '<br><br><small style="color:#94a3b8;">Jika WhatsApp Desktop terinstall, akan terbuka otomatis. Kalau tidak, akan buka WhatsApp Web.</small>',
+    html: konfirmasiText + '<br><br><small style="color:#94a3b8;">Jika WhatsApp Desktop terinstall, akan terbuka otomatis.</small>',
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: '<i class="fab fa-whatsapp"></i> Buka WhatsApp',
@@ -239,7 +238,7 @@ function kirimWaSiswaSendiri(nis, nama, kelas, tanggal, status, keterangan) {
 }
 
 // =============================================
-// ⭐ LOAD WA NOTIF SECTION — Support BelumAbsen
+// LOAD WA NOTIF SECTION
 // =============================================
 function loadWaNotifSection(startDate, endDate) {
   var tanggal = startDate || todayLocalISO();
@@ -441,7 +440,6 @@ function handleLoginAdmin(e) {
     .withSuccessHandler(function(res) {
       hideLoading();
 
-      // ⭐ Terima Admin & AdminPKL
       if (res && res.status && (res.role === 'Admin' || res.role === 'AdminPKL')) {
         currentUser = res;
         setupRoleUI(res.role);
@@ -463,12 +461,9 @@ function handleLoginAdmin(e) {
         document.getElementById('login-page').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
 
-        // ⭐ FIX: initAdmin() TIDAK dipanggil lagi di sini
-        // (sudah di-handle oleh setupRoleUI → showPage → loadDashboardCharts)
         if (res.role === 'AdminPKL') {
           initAdminPKL();
         }
-        // else: initAdmin() sudah tidak perlu karena setupRoleUI sudah trigger
       } else {
         Swal.fire({
           icon: 'error',
@@ -623,7 +618,6 @@ function showPage(pageId, clickedLink) {
   if (sidebar && sidebar.classList.contains('active')) toggleSidebar();
 
   if (pageId === 'page-dashboard-admin') loadDashboardCharts();
-  // ⭐ FIX: loadApprovalDashboard sudah include load kelas di dalamnya (sequential)
   if (pageId === 'page-approval-admin') loadApprovalDashboard();
   if (pageId === 'page-lokasi-kelas') loadLokasiSekolah();
   if (pageId === 'page-dudi') loadDUDI();
@@ -650,10 +644,8 @@ function showPage(pageId, clickedLink) {
   if (pageId === 'page-monitoring-pkl-guru' && typeof loadMonitoringPKLGuru === 'function') loadMonitoringPKLGuru();
 }
 
-// ⭐ FIX: initAdmin — tidak lagi panggil loadDashboardCharts (cegah duplikat)
 function initAdmin() {
   refreshAllKelasDropdowns();
-  // loadDashboardCharts() DIHAPUS — sudah dipanggil via setupRoleUI → showPage
 }
 
 function initSiswa() {
@@ -707,7 +699,6 @@ function destroyCharts() {
   if (chartStudentPersonalInstance) { chartStudentPersonalInstance.destroy(); chartStudentPersonalInstance = null; }
 }
 
-// ⭐ loadDashboardCharts — pakai RACE TOKEN
 function loadDashboardCharts(startDate, endDate) {
   _dashboardToken++;
   var myToken = _dashboardToken;
@@ -723,7 +714,6 @@ function loadDashboardCharts(startDate, endDate) {
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
-      // ⭐ Cek token — kalau ada request lebih baru, skip response ini
       if (myToken !== _dashboardToken) {
         console.log('[Dashboard] Response #' + myToken + ' STALE — di-skip');
         return;
@@ -1017,7 +1007,7 @@ function renderStudentHistoryTable() {
 }
 
 // =============================================
-// APPROVAL DASHBOARD — sequential (anti timeout)
+// APPROVAL DASHBOARD — sequential
 // =============================================
 function loadApprovalKelasDropdown() {
   google.script.run
@@ -1039,7 +1029,6 @@ function loadApprovalKelasDropdown() {
     .getKelasForFilter();
 }
 
-// ⭐ loadApprovalDashboard — pakai nested sequential (hindari timeout)
 function loadApprovalDashboard() {
   _approvalToken++;
   var myToken = _approvalToken;
@@ -1047,7 +1036,6 @@ function loadApprovalDashboard() {
   showLoading();
   var filterKelas = document.getElementById('approval_filter_kelas') ? document.getElementById('approval_filter_kelas').value : '';
 
-  // ⭐ STEP 1: Load kelas dropdown dulu
   google.script.run
     .withSuccessHandler(function(kelasData) {
       if (myToken !== _approvalToken) return;
@@ -1064,7 +1052,6 @@ function loadApprovalDashboard() {
         if (currentVal) sel.value = currentVal;
       }
 
-      // ⭐ STEP 2: Load stats
       google.script.run
         .withSuccessHandler(function(stats) {
           if (myToken !== _approvalToken) return;
@@ -1079,7 +1066,6 @@ function loadApprovalDashboard() {
             else { badge.classList.add('hidden'); }
           }
 
-          // ⭐ STEP 3: Load pending list
           google.script.run
             .withSuccessHandler(function(pendingList) {
               if (myToken !== _approvalToken) return;
@@ -1094,7 +1080,6 @@ function loadApprovalDashboard() {
         })
         .withFailureHandler(function(err) {
           console.error('Stats error:', err);
-          // Lanjut ke STEP 3 walaupun stats gagal
           google.script.run
             .withSuccessHandler(function(pendingList) {
               hideLoading();
@@ -1116,6 +1101,9 @@ function loadApprovalDashboard() {
     .getKelasForFilter();
 }
 
+// =============================================
+// RENDER APPROVAL LIST — FIXED (nested if dihapus)
+// =============================================
 function renderApprovalList(pendingList) {
   var container = DOM.approvalContainer || document.getElementById('approval-list-container');
   if (!container) return;
@@ -1131,18 +1119,14 @@ function renderApprovalList(pendingList) {
 
   var html = '';
   pendingList.forEach(function(item) {
-        var statusBadge;
-    if (item.Is_Auto_Alpa) {
-      statusBadge = '<span style="background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">' +
-        '<i class="fas fa-robot"></i> AUTO-MARK ALPA</span>';
-    } else {
-          var statusBadge;
+    var statusBadge;
     if (item.Is_Auto_Alpa) {
       statusBadge = '<span style="background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">' +
         '<i class="fas fa-robot"></i> AUTO-MARK ALPA</span>';
     } else {
       statusBadge = '<span class="badge-approval-pending"><i class="fas fa-clock"></i> Pending</span>';
     }
+
     var statusMap = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa' };
     var displayKelas = item.Nama_Kelas || item.ID_Kelas || '-';
 
