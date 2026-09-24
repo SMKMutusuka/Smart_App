@@ -1131,7 +1131,13 @@ function renderApprovalList(pendingList) {
 
   var html = '';
   pendingList.forEach(function(item) {
-    var statusBadge = '<span class="badge-approval-pending"><i class="fas fa-clock"></i> Pending</span>';
+        var statusBadge;
+    if (item.Is_Auto_Alpa) {
+      statusBadge = '<span style="background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">' +
+        '<i class="fas fa-robot"></i> AUTO-MARK ALPA</span>';
+    } else {
+      statusBadge = '<span class="badge-approval-pending"><i class="fas fa-clock"></i> Pending</span>';
+    }
     var statusMap = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa' };
     var displayKelas = item.Nama_Kelas || item.ID_Kelas || '-';
 
