@@ -6,6 +6,7 @@ var BULAN_INDONESIA = [
 var HARI_INDONESIA = [
   "Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"
 ];
+
 // ⭐ Helper: Ambil jam saja dari string waktu
 function formatJamSaja(waktu) {
   if (!waktu) return '-';
@@ -31,10 +32,9 @@ function formatJamSaja(waktu) {
 
 // =============================================
 // ⭐ SELFIE MULTI-DEVICE — HP (native camera) + PC (getUserMedia)
-// Mode Kios: PC kamera langsung buka tanpa popup
 // =============================================
 var selfieWebcamStream = null;
-var _pulangGPSData = null;
+var _pulangGPSData = null; // ⭐ State GPS untuk absen pulang
 
 function isDesktopDevice() {
   return !/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -44,18 +44,11 @@ function hasGetUserMedia() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
-/**
- * ⭐ Entry point — auto-detect device
- * - HP: pakai native camera (capture="user")
- * - PC: pakai getUserMedia (kios mode)
- */
 function openSelfieCapture() {
   if (isDesktopDevice() && hasGetUserMedia()) {
     openWebcamLive();
     return;
   }
-
-  // HP → native camera
   var input = document.getElementById('selfie_input');
   if (input) {
     input.setAttribute('capture', 'user');
@@ -63,33 +56,21 @@ function openSelfieCapture() {
   }
 }
 
-/**
- * ⭐ Buka webcam live (PC/Kios) — tanpa popup, langsung kamera
- */
 function openWebcamLive() {
   var webcamContainer = document.getElementById('selfie-webcam-container');
   var previewContainer = document.getElementById('selfie-preview-container');
   var btnOpen = document.getElementById('btnOpenSelfie');
 
   if (!webcamContainer) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Error Sistem',
-      text: 'Elemen kamera tidak ditemukan. Hubungi admin.'
-    });
+    Swal.fire({ icon: 'error', title: 'Error Sistem', text: 'Elemen kamera tidak ditemukan. Hubungi admin.' });
     return;
   }
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Browser Tidak Support',
-      text: 'Silakan update Chrome ke versi terbaru.'
-    });
+    Swal.fire({ icon: 'error', title: 'Browser Tidak Support', text: 'Silakan update Chrome ke versi terbaru.' });
     return;
   }
 
-  // Tampilkan loading
   webcamContainer.style.display = 'block';
   webcamContainer.innerHTML =
     '<div style="text-align:center;padding:40px;">' +
@@ -101,17 +82,12 @@ function openWebcamLive() {
   if (btnOpen) btnOpen.style.display = 'none';
 
   navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: 'user',
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
+    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
     audio: false
   })
   .then(function(stream) {
     selfieWebcamStream = stream;
 
-    // Ganti isi container dengan video + tombol
     webcamContainer.innerHTML =
       '<video id="selfie-video" autoplay playsinline muted ' +
         'style="width:100%;max-width:480px;border-radius:12px;background:#000;transform:scaleX(-1);">' +
@@ -161,9 +137,6 @@ function openWebcamLive() {
   });
 }
 
-/**
- * ⭐ Capture snapshot dari webcam
- */
 function captureWebcamSnapshot() {
   var video = document.getElementById('selfie-video');
   if (!video || !video.videoWidth) {
@@ -176,30 +149,26 @@ function captureWebcamSnapshot() {
   canvas.height = video.videoHeight;
   var ctx = canvas.getContext('2d');
 
-  // Mirror effect
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0);
 
-  // ⭐ Kompres agresif biar < 30KB base64 (hindari redirect 302 Apps Script)
-var maxDim = 320;
-var w = canvas.width, h = canvas.height;
-if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
-else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
-if (w !== canvas.width) {
-  var tmp = document.createElement('canvas');
-  tmp.width = w; tmp.height = h;
-  tmp.getContext('2d').drawImage(canvas, 0, 0, w, h);
-  canvas = tmp;
-}
-var base64 = canvas.toDataURL('image/jpeg', 0.5);
-// Loop kompres kalau masih > 30000 char
-var q = 0.5;
-while (base64.length > 30000 && q > 0.15) {
-  q -= 0.05;
-  base64 = canvas.toDataURL('image/jpeg', q);
-}
-console.log('[Selfie Webcam] Size:', base64.length);
+  var maxDim = 320;
+  var w = canvas.width, h = canvas.height;
+  if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+  else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+  if (w !== canvas.width) {
+    var tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').drawImage(canvas, 0, 0, w, h);
+    canvas = tmp;
+  }
+  var base64 = canvas.toDataURL('image/jpeg', 0.5);
+  var q = 0.5;
+  while (base64.length > 30000 && q > 0.15) {
+    q -= 0.05;
+    base64 = canvas.toDataURL('image/jpeg', q);
+  }
 
   var base64Input = document.getElementById('selfie_base64');
   if (base64Input) base64Input.value = base64;
@@ -231,7 +200,7 @@ console.log('[Selfie Webcam] Size:', base64.length);
     position: 'top-end'
   });
 }
- 
+
 function closeWebcam() {
   if (selfieWebcamStream) {
     selfieWebcamStream.getTracks().forEach(function(t) { t.stop(); });
@@ -241,11 +210,9 @@ function closeWebcam() {
 
 function cancelWebcam() {
   closeWebcam();
-
   var webcamContainer = document.getElementById('selfie-webcam-container');
   var previewContainer = document.getElementById('selfie-preview-container');
   var btnOpen = document.getElementById('btnOpenSelfie');
-
   if (webcamContainer) webcamContainer.style.display = 'none';
   if (previewContainer) previewContainer.style.display = 'block';
   if (btnOpen) {
@@ -254,9 +221,6 @@ function cancelWebcam() {
   }
 }
 
-/**
- * ⭐ Handle upload dari file input (HP native camera)
- */
 function handleSelfieUpload(input) {
   var preview = document.getElementById('selfie-preview');
   var placeholder = document.getElementById('selfie-placeholder');
@@ -282,7 +246,6 @@ function handleSelfieUpload(input) {
         q -= 0.05;
         base64 = cv.toDataURL('image/jpeg', q);
       }
-      console.log('[Selfie HP] Size:', base64.length);
 
       var base64Input = document.getElementById('selfie_base64');
       if (base64Input) base64Input.value = base64;
@@ -298,9 +261,6 @@ function handleSelfieUpload(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
-/**
- * ⭐ Cek apakah sudah ada selfie (webcam atau file)
- */
 function hasSelfieCapture() {
   var base64Input = document.getElementById('selfie_base64');
   var hasWebcam = base64Input && base64Input.value && base64Input.value.indexOf('data:image') === 0;
@@ -611,6 +571,10 @@ function prepareStudentAbsenPage() {
     .cekAbsensi(todayStr, currentUser.student.ID_Kelas);
 }
 
+// =============================================
+// ⭐ RENDER: TAMPILAN LOCKED (siswa sudah absen masuk)
+// Card Hadir (kiri) + Card Pulang dengan tombol GPS (kanan)
+// =============================================
 function renderStudentAbsenLocked(container, todayStr, existing) {
   var badgeClass = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa' }[existing.Status] || 'badge-hadir';
   var approvalMap = {
@@ -653,7 +617,7 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
         '</div>' +
 
         // ⭐ TOMBOL GPS (mirip form Hadir)
-        '<div id="pulang-gps-section">' +
+        '<div>' +
           '<button type="button" class="btn btn-outline btn-sm" id="btn-ambil-gps-pulang" onclick="ambilGPSPulang()" ' +
             'style="width:100%;min-height:34px;font-size:11px;border-color:#f59e0b;color:#92400e;background:#fff;font-weight:700;">' +
             '<i class="fas fa-location-dot"></i> Dapatkan Lokasi Saya' +
@@ -707,124 +671,136 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
   container.innerHTML = infoCard + gabungCard;
 }
 
-function renderStudentAbsenForm(todayStr) {
-  var container = document.getElementById('student-absen-page-content');
-  if (!container) return;
+// =============================================
+// ⭐ AMBIL GPS UNTUK ABSEN PULANG
+// =============================================
+function ambilGPSPulang() {
+  var statusEl = document.getElementById('pulang-gps-status');
+  var btnGPS = document.getElementById('btn-ambil-gps-pulang');
+  var btnAbsen = document.getElementById('btn-absen-pulang');
 
-  container.innerHTML =
-    '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
-      '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
-      '<div style="font-size:12.5px;color:#065f46;margin-top:4px;">' +
-        'Silakan tentukan status kehadiran Anda. ' +
-        '<strong style="color:var(--primary-dark);">✅ Hadir: wajib GPS + Selfie</strong> | ' +
-        '<strong style="color:#3b82f6;">📄 Sakit/Izin: wajib upload surat</strong>' +
-      '</div>' +
-    '</div>' +
+  if (!navigator.geolocation) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> GPS tidak didukung browser</span>';
+    return;
+  }
 
-    '<div class="card" style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 18px;margin-bottom:16px;">' +
-      '<div style="font-size:12.5px;color:#78350f;line-height:1.5;">' +
-      '<i class="fas fa-info-circle" style="color:#d97706;"></i> <strong>Info:</strong> ' +
-      'Presensi Hadir <strong>WAJIB</strong> berada di area sekolah dan wajib foto selfie. ' +
-      'Pastikan GPS HP aktif dengan mode <strong>Akurasi Tinggi</strong>.' +
-      '</div>' +
-    '</div>' +
+  if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendeteksi lokasi (multi-sampling)...';
+  if (btnGPS) { btnGPS.disabled = true; btnGPS.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...'; }
+  if (btnAbsen) { btnAbsen.disabled = true; btnAbsen.style.opacity = '0.5'; btnAbsen.style.cursor = 'not-allowed'; }
 
-    '<div class="card">' +
-      '<form id="formStudentSelfAbsen" onsubmit="submitStudentSelfAbsen(event)">' +
+  getAccuratePosition()
+    .then(function(reading) {
+      var latInput = document.getElementById('pulang_lat');
+      var lngInput = document.getElementById('pulang_lng');
+      var accInput = document.getElementById('pulang_acc');
+      var jarakInput = document.getElementById('pulang_jarak');
 
-        // GPS Section
-        '<div class="form-group" id="gps-group">' +
-          '<label><i class="fas fa-satellite"></i> Lokasi GPS <span style="color:var(--primary-dark);font-weight:700;">(Wajib untuk Hadir)</span></label>' +
-          '<div id="gps-status-container">' +
-            '<button type="button" class="btn btn-outline btn-sm" onclick="getStudentLocation()" style="min-height:36px;">' +
-              '<i class="fas fa-location-dot"></i> Dapatkan Lokasi Saya' +
-            '</button>' +
-            '<span id="gps-status-text" style="margin-left:10px;font-size:12px;color:var(--text-muted);">Belum diambil</span>' +
-          '</div>' +
-          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. WAJIB — tidak bisa lanjut tanpa GPS.</div>' +
-          '<input type="hidden" id="student_latitude" value="">' +
-          '<input type="hidden" id="student_longitude" value="">' +
-          '<input type="hidden" id="student_gps_accuracy" value="">' +
-        '</div>' +
+      if (latInput) latInput.value = reading.lat;
+      if (lngInput) lngInput.value = reading.lng;
+      if (accInput) accInput.value = reading.acc;
 
-        // Selfie Section — MULTI-DEVICE
-        '<div class="form-group" id="selfie-group">' +
-          '<label><i class="fas fa-camera"></i> Selfie <span style="color:var(--primary-dark);font-weight:700;">(Wajib untuk Hadir)</span></label>' +
-          '<div class="selfie-container" id="selfie-container" style="padding:16px;background:#f8fafc;border-radius:12px;border:2px dashed var(--border);">' +
+      google.script.run
+        .withSuccessHandler(function(lokasi) {
+          var jarak = 0;
+          var radius = 100;
+          if (lokasi && lokasi.Latitude && lokasi.Longitude) {
+            var R = 6371000;
+            var dLat = (lokasi.Latitude - reading.lat) * Math.PI / 180;
+            var dLon = (lokasi.Longitude - reading.lng) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(reading.lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            jarak = Math.round(R * c);
+            radius = lokasi.Radius_Meter || 100;
+          }
 
-            // Preview foto
-            '<div id="selfie-preview-container" style="text-align:center;">' +
-              '<img id="selfie-preview" class="selfie-preview" src="" alt="Selfie preview" style="display:none;max-width:280px;border-radius:12px;">' +
-              '<div id="selfie-placeholder" style="padding:20px;text-align:center;color:var(--text-muted);">' +
-                '<i class="fas fa-camera" style="font-size:2.5em;display:block;margin-bottom:10px;color:#94a3b8;"></i>' +
-                '<span>Klik tombol di bawah untuk buka kamera</span>' +
-              '</div>' +
-            '</div>' +
+          var radiusToleransi = radius * 2;
+          var acc = Math.round(reading.acc);
+          var okArea = jarak <= radiusToleransi;
 
-            // Live webcam (PC/Kios)
-            '<div id="selfie-webcam-container" style="display:none;text-align:center;"></div>' +
+          if (jarakInput) jarakInput.value = jarak;
 
-            // File input (HP native camera)
-            '<input type="file" id="selfie_input" accept="image/*" capture="user" style="display:none;" onchange="handleSelfieUpload(this)">' +
-            '<input type="hidden" id="selfie_base64" value="">' +
+          var accLabel = acc <= 30 ? '🟢 Bagus' : acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
+          var warna = okArea ? '#065f46' : '#991b1b';
+          var bgStatus = okArea ? '#d1fae5' : '#fee2e2';
 
-            // Tombol
-            '<div style="text-align:center;margin-top:12px;">' +
-              '<button type="button" class="btn btn-outline btn-sm selfie-btn" id="btnOpenSelfie" onclick="openSelfieCapture()">' +
-                '<i class="fas fa-camera"></i> Ambil Selfie' +
-              '</button>' +
-            '</div>' +
+          if (statusEl) {
+            statusEl.style.background = bgStatus;
+            statusEl.style.color = warna;
+            statusEl.style.fontWeight = '700';
+            statusEl.innerHTML =
+              '<div>✅ GPS Terkunci</div>' +
+              '<div style="font-size:10px;font-weight:600;margin-top:2px;">' +
+                'Lat: ' + reading.lat.toFixed(6) + '<br>' +
+                'Lng: ' + reading.lng.toFixed(6) + '<br>' +
+                '📏 Jarak: <strong>' + jarak + 'm</strong> (radius ' + radius + 'm)<br>' +
+                '🎯 Akurasi: ' + accLabel + ' (±' + acc + 'm)' +
+              '</div>';
+          }
 
-          '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">' +
-            '<i class="fas fa-info-circle"></i> Selfie adalah bukti utama kehadiran Anda.' +
-          '</div>' +
-        '</div>' +
+          if (btnGPS) {
+            btnGPS.disabled = false;
+            btnGPS.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh GPS';
+          }
 
-        // Status
-        '<div class="form-group">' +
-          '<label><i class="fas fa-check-square"></i> Status Kehadiran</label>' +
-          '<div class="absen-options-personal" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
-            '<label class="radio-btn"><input type="radio" name="student_status" value="Hadir" checked onchange="toggleAbsenFields()"> <i class="fas fa-check-circle"></i> Hadir</label>' +
-            '<label class="radio-btn"><input type="radio" name="student_status" value="Sakit" onchange="toggleAbsenFields()"> <i class="fas fa-thermometer-half"></i> Sakit</label>' +
-            '<label class="radio-btn"><input type="radio" name="student_status" value="Izin" onchange="toggleAbsenFields()"> <i class="fas fa-envelope"></i> Izin</label>' +
-          '</div>' +
-        '</div>' +
+          if (btnAbsen) {
+            if (okArea) {
+              btnAbsen.disabled = false;
+              btnAbsen.style.opacity = '1';
+              btnAbsen.style.cursor = 'pointer';
+            } else {
+              btnAbsen.disabled = true;
+              btnAbsen.style.opacity = '0.5';
+              btnAbsen.style.cursor = 'not-allowed';
 
-        // Keterangan
-        '<div class="form-group">' +
-          '<label for="student_keterangan"><i class="fas fa-sticky-note"></i> Keterangan</label>' +
-          '<input type="text" id="student_keterangan" class="form-control" placeholder="Contoh: Demam tinggi / Acara keluarga">' +
-          '<div id="keterangan-hint" style="font-size:11px;color:#f59e0b;margin-top:4px;display:none;">' +
-            '<i class="fas fa-exclamation-triangle"></i> <strong>Wajib diisi</strong> jika GPS tidak terdeteksi.' +
-          '</div>' +
-        '</div>' +
+              Swal.fire({
+                icon: 'warning',
+                title: 'Di Luar Area Sekolah',
+                html: 'Jarak Anda <strong>' + jarak + 'm</strong><br>' +
+                      'Radius maksimal <strong>' + radiusToleransi + 'm</strong><br><br>' +
+                      '<span style="font-size:11px;color:#94a3b8;">Mendekatlah ke area sekolah & klik Refresh GPS.</span>',
+                confirmButtonColor: '#10b981',
+                confirmButtonText: 'Mengerti'
+              });
+            }
+          }
 
-        // Surat Upload
-        '<div class="form-group" id="surat-upload-group" style="display:none;">' +
-          '<label><i class="fas fa-paperclip"></i> Upload Surat Keterangan <span style="color:#3b82f6;font-weight:700;">(Wajib untuk Sakit/Izin)</span></label>' +
-          '<div class="personal-file-upload">' +
-            '<label class="file-label" for="file_surat_siswa"><i class="fas fa-cloud-upload-alt"></i> Upload Surat</label>' +
-            '<input type="file" id="file_surat_siswa" accept=".pdf,.jpg,.jpeg,.png" onchange="updateStudentFileName(this)">' +
-            '<span class="file-name" id="file_surat_name" style="margin-left:8px;">Belum ada file dipilih</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px;min-height:46px;" id="btnSubmitAbsenSiswa">' +
-          '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya' +
-        '</button>' +
-      '</form>' +
-    '</div>';
-
-  loadStudentKelasInfo();
-  toggleAbsenFields();
+          if (okArea) {
+            Swal.fire({
+              icon: 'success',
+              title: 'GPS Terkunci!',
+              text: 'Jarak ' + jarak + 'm dari sekolah',
+              timer: 1500,
+              showConfirmButton: false,
+              toast: true,
+              position: 'top-end'
+            });
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (statusEl) {
+            statusEl.style.background = '#fee2e2';
+            statusEl.style.color = '#991b1b';
+            statusEl.innerHTML = '<i class="fas fa-times-circle"></i> Gagal cek sekolah: ' + err.message;
+          }
+          if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
+        })
+        .getLokasiSekolah();
+    })
+    .catch(function(err) {
+      if (statusEl) {
+        statusEl.style.background = '#fee2e2';
+        statusEl.style.color = '#991b1b';
+        statusEl.style.fontWeight = '700';
+        statusEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + (err.message || 'GPS gagal terkunci');
+      }
+      if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
+    });
 }
 
-// ⭐ Konfirmasi & submit absen pulang (tanpa selfie)
-// ⭐ Konfirmasi & submit absen pulang — GPS only, tanpa selfie
 // =============================================
 // ⭐ KONFIRMASI & SUBMIT ABSEN PULANG
-// Pakai data GPS dari tombol "Dapatkan Lokasi Saya"
 // =============================================
 function konfirmAbsenPulang() {
   if (!currentUser || !currentUser.student) {
@@ -837,7 +813,6 @@ function konfirmAbsenPulang() {
   var jarak = document.getElementById('pulang_jarak') ? document.getElementById('pulang_jarak').value : '';
   var acc = document.getElementById('pulang_acc') ? document.getElementById('pulang_acc').value : '';
 
-  // ⭐ Validasi: GPS harus sudah diambil
   if (!lat || !lng) {
     Swal.fire({
       icon: 'warning',
@@ -901,49 +876,141 @@ function konfirmAbsenPulang() {
   });
 }
 
-function checkDistanceToClass(lat, lng, accuracy) {
-  if (!currentUser || !currentUser.student) return;
+// =============================================
+// RENDER: FORM ABSEN BARU (siswa belum absen hari ini)
+// =============================================
+function renderStudentAbsenForm(todayStr) {
+  var container = document.getElementById('student-absen-page-content');
+  if (!container) return;
 
-  google.script.run
-    .withSuccessHandler(function(lokasi) {
-      var infoDiv = document.getElementById('gps-info');
-      if (!lokasi || !lokasi.Latitude || !lokasi.Longitude) {
-        if (infoDiv) infoDiv.innerHTML += '<br><span style="color:#f59e0b;">⚠️ Lokasi sekolah belum diatur admin. Absensi menunggu verifikasi guru.</span>';
-        return;
-      }
+  container.innerHTML =
+    '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
+      '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
+      '<div style="font-size:12.5px;color:#065f46;margin-top:4px;">' +
+        'Silakan tentukan status kehadiran Anda. ' +
+        '<strong style="color:var(--primary-dark);">✅ Hadir: wajib GPS + Selfie</strong> | ' +
+        '<strong style="color:#3b82f6;">📄 Sakit/Izin: wajib upload surat</strong>' +
+      '</div>' +
+    '</div>' +
 
-      var R = 6371000;
-      var dLat = (lokasi.Latitude - lat) * Math.PI / 180;
-      var dLon = (lokasi.Longitude - lng) * Math.PI / 180;
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      var jarak = R * c;
-      var radius = lokasi.Radius_Meter || 100;
-      var radiusToleransi = radius * 2;
+    '<div class="card" style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 18px;margin-bottom:16px;">' +
+      '<div style="font-size:12.5px;color:#78350f;line-height:1.5;">' +
+      '<i class="fas fa-info-circle" style="color:#d97706;"></i> <strong>Info:</strong> ' +
+      'Presensi Hadir <strong>WAJIB</strong> berada di area sekolah dan wajib foto selfie. ' +
+      'Pastikan GPS HP aktif dengan mode <strong>Akurasi Tinggi</strong>.' +
+      '</div>' +
+    '</div>' +
 
-      var status, color;
-      if (jarak <= radius) {
-        status = '✅ Dalam area sekolah (auto-approve)';
-        color = '#10b981';
-      } else if (jarak <= radiusToleransi) {
-        status = '⚠️ Di luar area (dalam toleransi, perlu approval)';
-        color = '#f59e0b';
-      } else {
-        status = '❌ Jauh dari sekolah (perlu approval guru)';
-        color = '#ef4444';
-      }
+    '<div class="card">' +
+      '<form id="formStudentSelfAbsen" onsubmit="submitStudentSelfAbsen(event)">' +
 
-      if (infoDiv) {
-        infoDiv.innerHTML += '<br><strong style="color:' + color + ';">Jarak dari sekolah: ' +
-          Math.round(jarak) + 'm (radius ' + radius + 'm) — ' + status + '</strong>';
-      }
-    })
-    .withFailureHandler(function(err) { console.error(err); })
-    .getLokasiSekolah();
+        '<div class="form-group" id="gps-group">' +
+          '<label><i class="fas fa-satellite"></i> Lokasi GPS <span style="color:var(--primary-dark);font-weight:700;">(Wajib untuk Hadir)</span></label>' +
+          '<div id="gps-status-container">' +
+            '<button type="button" class="btn btn-outline btn-sm" onclick="getStudentLocation()" style="min-height:36px;">' +
+              '<i class="fas fa-location-dot"></i> Dapatkan Lokasi Saya' +
+            '</button>' +
+            '<span id="gps-status-text" style="margin-left:10px;font-size:12px;color:var(--text-muted);">Belum diambil</span>' +
+          '</div>' +
+          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. WAJIB — tidak bisa lanjut tanpa GPS.</div>' +
+          '<input type="hidden" id="student_latitude" value="">' +
+          '<input type="hidden" id="student_longitude" value="">' +
+          '<input type="hidden" id="student_gps_accuracy" value="">' +
+        '</div>' +
+
+        '<div class="form-group" id="selfie-group">' +
+          '<label><i class="fas fa-camera"></i> Selfie <span style="color:var(--primary-dark);font-weight:700;">(Wajib untuk Hadir)</span></label>' +
+          '<div class="selfie-container" id="selfie-container" style="padding:16px;background:#f8fafc;border-radius:12px;border:2px dashed var(--border);">' +
+
+            '<div id="selfie-preview-container" style="text-align:center;">' +
+              '<img id="selfie-preview" class="selfie-preview" src="" alt="Selfie preview" style="display:none;max-width:280px;border-radius:12px;">' +
+              '<div id="selfie-placeholder" style="padding:20px;text-align:center;color:var(--text-muted);">' +
+                '<i class="fas fa-camera" style="font-size:2.5em;display:block;margin-bottom:10px;color:#94a3b8;"></i>' +
+                '<span>Klik tombol di bawah untuk buka kamera</span>' +
+              '</div>' +
+            '</div>' +
+
+            '<div id="selfie-webcam-container" style="display:none;text-align:center;"></div>' +
+
+            '<input type="file" id="selfie_input" accept="image/*" capture="user" style="display:none;" onchange="handleSelfieUpload(this)">' +
+            '<input type="hidden" id="selfie_base64" value="">' +
+
+            '<div style="text-align:center;margin-top:12px;">' +
+              '<button type="button" class="btn btn-outline btn-sm selfie-btn" id="btnOpenSelfie" onclick="openSelfieCapture()">' +
+                '<i class="fas fa-camera"></i> Ambil Selfie' +
+              '</button>' +
+            '</div>' +
+
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">' +
+            '<i class="fas fa-info-circle"></i> Selfie adalah bukti utama kehadiran Anda.' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label><i class="fas fa-check-square"></i> Status Kehadiran</label>' +
+          '<div class="absen-options-personal" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+            '<label class="radio-btn"><input type="radio" name="student_status" value="Hadir" checked onchange="toggleAbsenFields()"> <i class="fas fa-check-circle"></i> Hadir</label>' +
+            '<label class="radio-btn"><input type="radio" name="student_status" value="Sakit" onchange="toggleAbsenFields()"> <i class="fas fa-thermometer-half"></i> Sakit</label>' +
+            '<label class="radio-btn"><input type="radio" name="student_status" value="Izin" onchange="toggleAbsenFields()"> <i class="fas fa-envelope"></i> Izin</label>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label for="student_keterangan"><i class="fas fa-sticky-note"></i> Keterangan</label>' +
+          '<input type="text" id="student_keterangan" class="form-control" placeholder="Contoh: Demam tinggi / Acara keluarga">' +
+          '<div id="keterangan-hint" style="font-size:11px;color:#f59e0b;margin-top:4px;display:none;">' +
+            '<i class="fas fa-exclamation-triangle"></i> <strong>Wajib diisi</strong> jika GPS tidak terdeteksi.' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="form-group" id="surat-upload-group" style="display:none;">' +
+          '<label><i class="fas fa-paperclip"></i> Upload Surat Keterangan <span style="color:#3b82f6;font-weight:700;">(Wajib untuk Sakit/Izin)</span></label>' +
+          '<div class="personal-file-upload">' +
+            '<label class="file-label" for="file_surat_siswa"><i class="fas fa-cloud-upload-alt"></i> Upload Surat</label>' +
+            '<input type="file" id="file_surat_siswa" accept=".pdf,.jpg,.jpeg,.png" onchange="updateStudentFileName(this)">' +
+            '<span class="file-name" id="file_surat_name" style="margin-left:8px;">Belum ada file dipilih</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px;min-height:46px;" id="btnSubmitAbsenSiswa">' +
+          '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya' +
+        '</button>' +
+      '</form>' +
+    '</div>';
+
+  loadStudentKelasInfo();
+  toggleAbsenFields();
 }
 
+// =============================================
+// ⭐ TOGGLE FIELDS — Hadir vs Sakit/Izin
+// =============================================
+function toggleAbsenFields() {
+  var status = document.querySelector('input[name="student_status"]:checked');
+  var gpsGroup = document.getElementById('gps-group');
+  var selfieGroup = document.getElementById('selfie-group');
+  var suratGroup = document.getElementById('surat-upload-group');
+  var ketHint = document.getElementById('keterangan-hint');
+
+  if (status) {
+    if (status.value === 'Hadir') {
+      if (gpsGroup) gpsGroup.style.display = 'block';
+      if (selfieGroup) selfieGroup.style.display = 'block';
+      if (suratGroup) suratGroup.style.display = 'none';
+      if (ketHint) ketHint.style.display = 'none';
+    } else {
+      if (gpsGroup) gpsGroup.style.display = 'none';
+      if (selfieGroup) selfieGroup.style.display = 'none';
+      if (suratGroup) suratGroup.style.display = 'block';
+      if (ketHint) ketHint.style.display = 'none';
+    }
+  }
+}
+
+// =============================================
+// ⭐ LOAD INFO KELAS & LOKASI SEKOLAH
+// =============================================
 function loadStudentKelasInfo() {
   if (!currentUser || !currentUser.student) return;
 
@@ -954,9 +1021,9 @@ function loadStudentKelasInfo() {
         if (lokasi && lokasi.Latitude && lokasi.Longitude) {
           infoDiv.innerHTML = '📍 Lokasi sekolah: <strong>' + (lokasi.Nama_Sekolah || 'SMK') + '</strong>' +
             ' (Radius ' + (lokasi.Radius_Meter || 100) + 'm) <br>' +
-            '<span style="color:#64748b;">GPS opsional — bisa lanjut tanpa GPS dengan verifikasi guru.</span>';
+            '<span style="color:#64748b;">WAJIB berada di area sekolah untuk bisa absen Hadir.</span>';
         } else {
-          infoDiv.innerHTML = '⚠️ Lokasi sekolah belum diatur admin. Anda tetap bisa absen, guru akan verifikasi via selfie.';
+          infoDiv.innerHTML = '⚠️ Lokasi sekolah belum diatur admin. Hubungi admin terlebih dahulu.';
           infoDiv.style.color = '#f59e0b';
         }
       }
@@ -965,6 +1032,104 @@ function loadStudentKelasInfo() {
     .getLokasiSekolah();
 }
 
+// =============================================
+// ⭐ GET STUDENT LOCATION (untuk form Hadir)
+// =============================================
+function getStudentLocation() {
+  var status = document.querySelector('input[name="student_status"]:checked');
+  if (status && status.value !== 'Hadir') {
+    Swal.fire({ icon: 'info', title: 'Tidak Perlu GPS', text: 'GPS hanya diperlukan untuk status HADIR.' });
+    return;
+  }
+
+  var statusText = document.getElementById('gps-status-text');
+  var infoDiv = document.getElementById('gps-info');
+  var latInput = document.getElementById('student_latitude');
+  var lngInput = document.getElementById('student_longitude');
+
+  if (!navigator.geolocation) {
+    if (statusText) statusText.innerHTML = '<span class="gps-status inactive"><span class="gps-dot"></span> GPS tidak didukung</span>';
+    if (infoDiv) infoDiv.innerHTML = '💡 Anda tetap bisa absen. Isi keterangan alasan GPS tidak bisa diakses.';
+    return;
+  }
+
+  if (statusText) statusText.innerHTML = '<span class="gps-status loading"><span class="gps-dot"></span> Mendeteksi lokasi (multi-sampling)...</span>';
+  if (infoDiv) infoDiv.innerHTML = '⏳ Membaca GPS beberapa kali untuk akurasi terbaik...';
+
+  getAccuratePosition()
+    .then(function(reading) {
+      if (latInput) latInput.value = reading.lat;
+      if (lngInput) lngInput.value = reading.lng;
+      var accInput = document.getElementById('student_gps_accuracy');
+      if (accInput) accInput.value = reading.acc;
+
+      if (statusText) statusText.innerHTML = '<span class="gps-status active"><span class="gps-dot"></span> Lokasi didapat ✓</span>';
+      if (infoDiv) {
+        var quality = reading.acc <= 30 ? '🟢 Bagus' : reading.acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
+        infoDiv.innerHTML = 'Lat: ' + reading.lat.toFixed(6) +
+                            ' | Lng: ' + reading.lng.toFixed(6) +
+                            ' | Akurasi: <strong>±' + Math.round(reading.acc) + 'm</strong> ' + quality +
+                            ' <small>(' + reading.samples + ' sampel)</small>';
+      }
+
+      checkDistanceToClass(reading.lat, reading.lng, reading.acc);
+    })
+    .catch(function(err) {
+      if (statusText) statusText.innerHTML = '<span class="gps-status inactive"><span class="gps-dot"></span> Gagal deteksi GPS</span>';
+      if (infoDiv) {
+        infoDiv.innerHTML = '<span style="color:#ef4444;">' + err.message + '</span><br>' +
+                            '💡 <strong>Coba lagi:</strong> Keluar ruangan / dekat jendela, aktifkan GPS Akurasi Tinggi, tunggu 5-10 detik lalu klik ulang.';
+      }
+      var ketHint = document.getElementById('keterangan-hint');
+      if (ketHint) ketHint.style.display = 'block';
+    });
+}
+
+// =============================================
+// ⭐ CHECK DISTANCE TO CLASS
+// =============================================
+function checkDistanceToClass(lat, lng, accuracy) {
+  if (!currentUser || !currentUser.student) return;
+
+  google.script.run
+    .withSuccessHandler(function(lokasi) {
+      var infoDiv = document.getElementById('gps-info');
+      if (!lokasi || !lokasi.Latitude || !lokasi.Longitude) {
+        if (infoDiv) infoDiv.innerHTML += '<br><span style="color:#f59e0b;">⚠️ Lokasi sekolah belum diatur admin.</span>';
+        return;
+      }
+
+      var R = 6371000;
+      var dLat = (lokasi.Latitude - lat) * Math.PI / 180;
+      var dLon = (lokasi.Longitude - lng) * Math.PI / 180;
+      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      var jarak = Math.round(R * c);
+      var radius = lokasi.Radius_Meter || 100;
+
+      var status, color;
+      if (jarak <= radius) {
+        status = '✅ Dalam area sekolah';
+        color = '#10b981';
+      } else {
+        status = '❌ Di luar area (tidak bisa absen)';
+        color = '#ef4444';
+      }
+
+      if (infoDiv) {
+        infoDiv.innerHTML += '<br><strong style="color:' + color + ';">Jarak dari sekolah: ' +
+          jarak + 'm (radius ' + radius + 'm) — ' + status + '</strong>';
+      }
+    })
+    .withFailureHandler(function(err) { console.error(err); })
+    .getLokasiSekolah();
+}
+
+// =============================================
+// ⭐ UPDATE STUDENT FILE NAME (untuk surat)
+// =============================================
 function updateStudentFileName(input) {
   var nameSpan = document.getElementById('file_surat_name');
   if (!nameSpan) return;
@@ -980,7 +1145,7 @@ function updateStudentFileName(input) {
 }
 
 // =============================================
-// SUBMIT ABSEN SISWA
+// ⭐ SUBMIT ABSEN SISWA (Hadir / Sakit / Izin)
 // =============================================
 function submitStudentSelfAbsen(e) {
   e.preventDefault();
@@ -997,10 +1162,8 @@ function submitStudentSelfAbsen(e) {
   var accInput = document.getElementById('student_gps_accuracy');
   var s = currentUser.student;
 
-  // Validasi
-    // ⭐ Validasi — HADIR wajib selfie + GPS (tanpa pengecualian)
+  // ⭐ Validasi — HADIR wajib selfie + GPS
   if (status === 'Hadir') {
-    // Cek selfie
     if (!hasSelfieCapture()) {
       Swal.fire({
         icon: 'warning',
@@ -1010,7 +1173,6 @@ function submitStudentSelfAbsen(e) {
       return;
     }
 
-    // ⭐ Cek GPS — WAJIB, tidak bisa di-bypass
     if (!latInput.value || !lngInput.value) {
       Swal.fire({
         icon: 'warning',
@@ -1027,10 +1189,7 @@ function submitStudentSelfAbsen(e) {
       });
       return;
     }
-
-    // Cek keterangan kosong kalau perlu (tidak perlu lagi karena GPS wajib)
   } else if (status === 'Sakit' || status === 'Izin') {
-  
     if (!fileInput.files || !fileInput.files[0]) {
       Swal.fire({ icon: 'warning', title: 'Surat Wajib',
                   text: 'Untuk status ' + status + ', wajib upload surat.' });
@@ -1038,10 +1197,7 @@ function submitStudentSelfAbsen(e) {
     }
   }
 
-  // Konfirmasi
   var confirmMsg = 'Kirim absensi (' + status + ') untuk hari ini?';
-  if (status === 'Hadir' && (!latInput.value || !lngInput.value)) {
-  }
 
   Swal.fire({
     title: 'Konfirmasi Absensi',
@@ -1067,20 +1223,18 @@ function submitStudentSelfAbsen(e) {
         if (filesProcessed >= totalFiles) {
           google.script.run
             .withSuccessHandler(function(msg) {
-  hideLoading();
-  if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya'; }
-      Swal.fire({ icon: 'success', title: 'Absensi Terkirim!', text: msg }).then(function() {
-      // ⭐ Sequential — hindari paralel request (biar tidak hang)
-      prepareStudentAbsenPage();
-      setTimeout(function() { loadStudentDashboard(); }, 1200);
-      setTimeout(function() { loadApprovalStatsOnly(); }, 2400);
-      // ⭐ Fallback: paksa hide loading setelah 1.5 detik
-      setTimeout(function() {
-        var loader = document.getElementById('global-loader');
-        if (loader) loader.classList.add('hidden');
-      }, 1500);
-    });
-  })
+              hideLoading();
+              if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya'; }
+              Swal.fire({ icon: 'success', title: 'Absensi Terkirim!', text: msg }).then(function() {
+                prepareStudentAbsenPage();
+                setTimeout(function() { loadStudentDashboard(); }, 1200);
+                setTimeout(function() { loadApprovalStatsOnly(); }, 2400);
+                setTimeout(function() {
+                  var loader = document.getElementById('global-loader');
+                  if (loader) loader.classList.add('hidden');
+                }, 1500);
+              });
+            })
             .withFailureHandler(function(err) {
               hideLoading();
               if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absensi Saya'; }
@@ -1161,11 +1315,7 @@ function fetchGTKCoordinates() {
       return;
     }
 
-    var options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    };
+    var options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
     navigator.geolocation.getCurrentPosition(
       function(pos) {
@@ -1371,11 +1521,10 @@ function handlePresensiGTK(e) {
 
       if (typeof loadGTKDashboard === 'function') {
         loadGTKDashboard();
-        // ⭐ Fallback: paksa hide loading setelah 1.5 detik
-setTimeout(function() {
-  var loader = document.getElementById('global-loader');
-  if (loader) loader.classList.add('hidden');
-}, 1500);
+        setTimeout(function() {
+          var loader = document.getElementById('global-loader');
+          if (loader) loader.classList.add('hidden');
+        }, 1500);
       }
     })
     .withFailureHandler(function(err) {
@@ -1664,7 +1813,7 @@ function renderGTKHistoryTable() {
 }
 
 // =============================================
-// EXPORT LAPORAN PRESENSI GTK KE PDF (SERVER-SIDE)
+// EXPORT LAPORAN PRESENSI GTK KE PDF
 // =============================================
 function exportLaporanGTKPDF() {
   if (!currentUser || !currentUser.gtk) {
@@ -1737,18 +1886,14 @@ function exportLaporanGTKPDF() {
 }
 
 function openGTKSelfie() {
-  // Prioritas 1: Coba webcam live (getUserMedia)
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     openGTKSelfieWebcam();
     return;
   }
-
-  // Prioritas 2: Fallback ke input file (browser kuno)
   var input = document.getElementById('gtk_input_selfie');
   if (input) input.click();
 }
 
-// ⭐ Fungsi terpisah — khusus webcam live
 function openGTKSelfieWebcam() {
   var gtkPreview = document.getElementById('gtk-preview-selfie');
   if (!gtkPreview) {
@@ -1756,7 +1901,6 @@ function openGTKSelfieWebcam() {
     return;
   }
 
-  // Buat container webcam kalau belum ada
   var existingWebcam = document.getElementById('gtk-selfie-webcam-container');
   if (!existingWebcam) {
     var container = document.createElement('div');
@@ -1806,7 +1950,6 @@ function openGTKSelfieWebcam() {
   .catch(function(err) {
     console.error('[GTK Webcam] Error:', err);
     
-    // ⭐ Tawarkan fallback ke input file
     var pesan = 'Gagal akses kamera: ' + (err.message || err.name);
     if (err.name === 'NotAllowedError') pesan = 'Izin kamera ditolak.';
     else if (err.name === 'NotReadableError') pesan = 'Kamera sedang dipakai aplikasi lain (Zoom/Meet).';
@@ -1845,7 +1988,6 @@ function captureGTKSelfie() {
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0);
 
-  // Kompres
   var maxDim = 320;
   var w = canvas.width, h = canvas.height;
   if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
@@ -1862,8 +2004,6 @@ function captureGTKSelfie() {
     q -= 0.05;
     base64 = canvas.toDataURL('image/jpeg', q);
   }
-
-  console.log('[GTK Selfie] Size:', base64.length);
 
   document.getElementById('gtk_selfie_base64').value = base64;
   var preview = document.getElementById('gtk-preview-selfie');
@@ -1882,459 +2022,4 @@ function cancelGTKSelfie() {
   closeWebcam();
   var webcamCont = document.getElementById('gtk-selfie-webcam-container');
   if (webcamCont) { webcamCont.style.display = 'none'; webcamCont.innerHTML = ''; }
-}
-
-// ⭐ Global state untuk GPS pulang
-var _pulangGPSData = null;
-
-// =============================================
-// RENDER HALAMAN ABSEN — LOCKED (siswa sudah absen masuk)
-// ⭐ Layout: Card Hadir (kiri) + Card Pulang dengan tombol Cek GPS (kanan)
-// =============================================
-function renderStudentAbsenLocked(container, todayStr, existing) {
-  var badgeClass = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa' }[existing.Status] || 'badge-hadir';
-  var approvalMap = {
-    'Pending': 'badge-approval-pending',
-    'Approved': 'badge-approval-approved',
-    'Rejected': 'badge-approval-rejected'
-  };
-  var approvalStatus = existing.Status_Approval || 'Approved';
-  var approvalText = approvalStatus === 'Pending' ? '⏳ Menunggu Approval' :
-                     approvalStatus === 'Approved' ? '✅ Disetujui' :
-                     '❌ Ditolak';
-
-  var sudahPulang = existing.Waktu_Pulang && String(existing.Waktu_Pulang).trim() !== '';
-
-  // ⭐ Reset state GPS setiap kali render
-  _pulangGPSData = null;
-
-  var infoCard =
-    '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
-      '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
-    '</div>';
-
-  // ⭐ Kolom Pulang
-  var pulangColumn = '';
-  if (sudahPulang) {
-    pulangColumn =
-      '<div style="background:#e0e7ff;border:1.5px solid #c7d2fe;border-radius:12px;padding:14px;">' +
-        '<div style="font-size:10px;font-weight:800;color:#3730a3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' +
-          '<i class="fas fa-sign-out-alt"></i> Pulang' +
-        '</div>' +
-        '<div style="font-size:22px;font-weight:800;color:#312e81;line-height:1;">' + String(existing.Waktu_Pulang) + '</div>' +
-        '<div style="font-size:11px;color:#4338ca;margin-top:10px;font-weight:700;">✅ Sudah Pulang</div>' +
-      '</div>';
-  } else {
-    pulangColumn =
-      '<div style="background:#fff7ed;border:1.5px dashed #f59e0b;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;">' +
-
-        '<div style="font-size:10px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:0.06em;text-align:center;margin-bottom:2px;">' +
-          '<i class="fas fa-sign-out-alt"></i> Pulang' +
-        '</div>' +
-
-        // ⭐ TOMBOL CEK GPS
-        '<button type="button" class="btn btn-outline btn-sm" id="btn-cek-gps-pulang" onclick="cekGPSPulang()" ' +
-          'style="min-height:34px;font-size:11.5px;border-color:#f59e0b;color:#92400e;background:#fff;font-weight:700;">' +
-          '<i class="fas fa-satellite"></i> Cek Lokasi GPS' +
-        '</button>' +
-
-        // ⭐ INFO GPS (status akurasi & jarak)
-        '<div id="info-gps-pulang" style="font-size:10.5px;color:#92400e;line-height:1.45;text-align:center;min-height:34px;background:#fffbeb;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;">' +
-          '<span><i class="fas fa-info-circle"></i> Klik <strong>Cek Lokasi GPS</strong> dulu</span>' +
-        '</div>' +
-
-        // ⭐ TOMBOL ABSEN PULANG (disabled sampai GPS valid)
-        '<button type="button" class="btn btn-primary" id="btn-absen-pulang" onclick="konfirmAbsenPulang()" ' +
-          'style="min-height:40px;background:linear-gradient(135deg,#f59e0b,#d97706);font-size:12.5px;opacity:0.5;cursor:not-allowed;" disabled>' +
-          '<i class="fas fa-sign-out-alt"></i> Absen Pulang' +
-        '</button>' +
-
-        '<div style="font-size:9.5px;color:#92400e;text-align:center;line-height:1.3;">' +
-          'Tanpa selfie — hanya verifikasi GPS' +
-        '</div>' +
-
-      '</div>';
-  }
-
-  var gabungCard =
-    '<div class="card" style="padding:20px;margin-bottom:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">' +
-        '<div style="font-weight:800;font-size:15px;color:#0f172a;"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Absensi Anda</div>' +
-        '<div><span class="' + (approvalMap[approvalStatus] || 'badge-approval-approved') + '" style="font-size:11px;padding:4px 14px;">' + approvalText + '</span></div>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">' +
-        // Kolom MASUK
-        '<div style="background:#ecfdf5;border:1.5px solid var(--primary-border);border-radius:12px;padding:14px;">' +
-          '<div style="font-size:10px;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' +
-            '<i class="fas fa-sign-in-alt"></i> Masuk' +
-          '</div>' +
-          '<div style="font-size:22px;font-weight:800;color:#065f46;line-height:1;">' + (existing.Waktu_Masuk || '-') + '</div>' +
-          '<div style="margin-top:10px;">' +
-            '<span class="badge-status-table ' + badgeClass + '" style="font-size:11px;padding:4px 12px;">' + existing.Status + '</span>' +
-          '</div>' +
-          (existing.Jarak_Meter ? '<div style="font-size:10.5px;color:#047857;margin-top:8px;">📏 ' + existing.Jarak_Meter + 'm dari sekolah</div>' : '') +
-        '</div>' +
-        // Kolom PULANG
-        pulangColumn +
-      '</div>' +
-      (existing.Keterangan ? '<div style="font-size:11.5px;color:#475569;background:#f8fafc;border-radius:8px;padding:10px 12px;margin-top:4px;"><strong>Ket:</strong> ' + escapeHtml(existing.Keterangan) + '</div>' : '') +
-    '</div>';
-
-  container.innerHTML = infoCard + gabungCard;
-}
-
-// =============================================
-// ⭐ CEK GPS UNTUK ABSEN PULANG
-// Ambil GPS → hitung jarak ke sekolah → tampilkan akurasi → aktifkan tombol Absen Pulang
-// =============================================
-function cekGPSPulang() {
-  var infoEl = document.getElementById('info-gps-pulang');
-  var btnCek = document.getElementById('btn-cek-gps-pulang');
-  var btnAbsen = document.getElementById('btn-absen-pulang');
-
-  if (infoEl) {
-    infoEl.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Mendeteksi lokasi...</span>';
-  }
-  if (btnCek) {
-    btnCek.disabled = true;
-    btnCek.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-  }
-  if (btnAbsen) {
-    btnAbsen.disabled = true;
-    btnAbsen.style.opacity = '0.5';
-    btnAbsen.style.cursor = 'not-allowed';
-  }
-  _pulangGPSData = null;
-
-  getAccuratePosition()
-    .then(function(reading) {
-      google.script.run
-        .withSuccessHandler(function(lokasi) {
-          var jarak = 0;
-          var radius = 100;
-          if (lokasi && lokasi.Latitude && lokasi.Longitude) {
-            var R = 6371000;
-            var dLat = (lokasi.Latitude - reading.lat) * Math.PI / 180;
-            var dLon = (lokasi.Longitude - reading.lng) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(reading.lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
-                    Math.sin(dLon/2) * Math.sin(dLon/2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            jarak = Math.round(R * c);
-            radius = lokasi.Radius_Meter || 100;
-          }
-
-          var radiusToleransi = radius * 2;
-          var acc = Math.round(reading.acc);
-          var okArea = jarak <= radiusToleransi;
-
-          // Label akurasi
-          var accLabel = acc <= 30 ? '🟢 Bagus' : acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
-          var accColor = acc <= 30 ? '#065f46' : acc <= 80 ? '#92400e' : '#991b1b';
-
-          // Status area
-          var areaColor = jarak <= radius ? '#065f46' : (okArea ? '#92400e' : '#991b1b');
-          var areaText = jarak <= radius ? '✅ Dalam area' : (okArea ? '⚠️ Toleransi' : '❌ Luar area');
-
-          // Simpan data GPS
-          _pulangGPSData = {
-            lat: reading.lat,
-            lng: reading.lng,
-            acc: acc,
-            jarak: jarak,
-            radius: radius,
-            valid: okArea
-          };
-
-          // Update UI info
-          if (infoEl) {
-            infoEl.style.background = okArea ? '#ecfdf5' : '#fef2f2';
-            infoEl.style.border = okArea ? '1px solid #a7f3d0' : '1px solid #fecaca';
-            infoEl.innerHTML =
-              '<div style="color:' + areaColor + ';font-weight:800;">' + areaText + ' — ' + jarak + 'm</div>' +
-              '<div style="color:' + accColor + ';font-size:10px;margin-top:2px;">Akurasi: ' + accLabel + ' (±' + acc + 'm)</div>';
-          }
-
-          if (btnCek) {
-            btnCek.disabled = false;
-            btnCek.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh GPS';
-          }
-
-          // Aktifkan tombol Absen Pulang kalau area OK
-          if (btnAbsen) {
-            if (okArea) {
-              btnAbsen.disabled = false;
-              btnAbsen.style.opacity = '1';
-              btnAbsen.style.cursor = 'pointer';
-            } else {
-              btnAbsen.disabled = true;
-              btnAbsen.style.opacity = '0.5';
-              btnAbsen.style.cursor = 'not-allowed';
-            }
-          }
-
-          // Toast berhasil
-          if (okArea) {
-            Swal.fire({
-              icon: 'success',
-              title: 'GPS Terkunci!',
-              text: jarak + 'm dari sekolah (±' + acc + 'm)',
-              timer: 1500,
-              showConfirmButton: false,
-              toast: true,
-              position: 'top-end'
-            });
-          } else {
-            Swal.fire({
-              icon: 'warning',
-              title: 'Di Luar Area',
-              html: 'Jarak Anda <strong>' + jarak + 'm</strong> dari sekolah.<br>' +
-                    'Radius maksimal: <strong>' + radiusToleransi + 'm</strong><br><br>' +
-                    '<span style="font-size:11px;color:#94a3b8;">Mendekatlah ke area sekolah lalu coba lagi.</span>',
-              confirmButtonColor: '#10b981'
-            });
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (infoEl) {
-            infoEl.style.background = '#fef2f2';
-            infoEl.style.border = '1px solid #fecaca';
-            infoEl.innerHTML = '<span style="color:#991b1b;"><i class="fas fa-times-circle"></i> ' + err.message + '</span>';
-          }
-          if (btnCek) {
-            btnCek.disabled = false;
-            btnCek.innerHTML = '<i class="fas fa-satellite"></i> Coba Lagi';
-          }
-        })
-        .getLokasiSekolah();
-    })
-    .catch(function(err) {
-      if (infoEl) {
-        infoEl.style.background = '#fef2f2';
-        infoEl.style.border = '1px solid #fecaca';
-        infoEl.innerHTML = '<span style="color:#991b1b;"><i class="fas fa-times-circle"></i> ' + (err.message || 'GPS gagal terkunci') + '</span>';
-      }
-      if (btnCek) {
-        btnCek.disabled = false;
-        btnCek.innerHTML = '<i class="fas fa-satellite"></i> Coba Lagi';
-      }
-      if (btnAbsen) {
-        btnAbsen.disabled = true;
-        btnAbsen.style.opacity = '0.5';
-        btnAbsen.style.cursor = 'not-allowed';
-      }
-      _pulangGPSData = null;
-    });
-}
-
-// =============================================
-// ⭐ KONFIRMASI & SUBMIT ABSEN PULANG
-// Pakai data GPS yang sudah dicek (dari cekGPSPulang)
-// =============================================
-function konfirmAbsenPulang() {
-  if (!currentUser || !currentUser.student) {
-    Swal.fire({ icon: 'error', title: 'Error', text: 'Data siswa tidak ditemukan.' });
-    return;
-  }
-
-  if (!_pulangGPSData || !_pulangGPSData.valid) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'GPS Belum Dicek',
-      html: 'Klik tombol <strong>"Cek Lokasi GPS"</strong> terlebih dahulu.<br>' +
-            '<span style="font-size:11px;color:#94a3b8;">Pastikan Anda berada di area sekolah.</span>',
-      confirmButtonColor: '#10b981'
-    });
-    return;
-  }
-
-  var gps = _pulangGPSData;
-
-  Swal.fire({
-    title: 'Konfirmasi Absen Pulang',
-    html: '<div style="text-align:left;font-size:13px;line-height:1.7;">' +
-            '<div style="background:#ecfdf5;padding:12px;border-radius:10px;margin-bottom:10px;">' +
-              '<div><strong>📍 GPS:</strong> ' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
-              '<div><strong>📏 Jarak:</strong> ' + gps.jarak + 'm (radius ' + gps.radius + 'm)</div>' +
-              '<div><strong>🎯 Akurasi:</strong> ±' + gps.acc + 'm</div>' +
-            '</div>' +
-            '<div style="font-size:11px;color:#94a3b8;text-align:center;">' +
-              'Tanpa selfie. Waktu pulang akan tersimpan otomatis.' +
-            '</div>' +
-          '</div>',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Ya, Absen Pulang',
-    cancelButtonText: 'Batal',
-    confirmButtonColor: '#10b981',
-    cancelButtonColor: '#64748b'
-  }).then(function(r) {
-    if (!r.isConfirmed) return;
-
-    showLoading();
-    var nisClean = String(currentUser.student.NIS).trim();
-
-    google.script.run
-      .withSuccessHandler(function(msg) {
-        hideLoading();
-        Swal.fire({
-          icon: 'success',
-          title: 'Absen Pulang Berhasil',
-          html: '<div style="font-size:13px;">' + msg + '</div>' +
-                '<div style="font-size:11px;color:#94a3b8;margin-top:8px;">Terima kasih sudah disiplin hari ini 🎉</div>',
-          timer: 2500,
-          showConfirmButton: false
-        });
-        _pulangGPSData = null;
-        setTimeout(function() { prepareStudentAbsenPage(); }, 1500);
-      })
-      .withFailureHandler(function(err) {
-        hideLoading();
-        Swal.fire({ icon: 'error', title: 'Gagal Absen Pulang', html: '<div style="font-size:13px;">' + err.message + '</div>' });
-      })
-      .submitAbsenPulangSiswa(
-        nisClean,
-        gps.lat,
-        gps.lng,
-        gps.jarak,
-        gps.acc,
-        ''
-      );
-  });
-}
-
-// =============================================
-// ⭐ AMBIL GPS UNTUK ABSEN PULANG
-// (versi tombol manual — mirip "Dapatkan Lokasi" di form Hadir)
-// =============================================
-function ambilGPSPulang() {
-  var statusEl = document.getElementById('pulang-gps-status');
-  var btnGPS = document.getElementById('btn-ambil-gps-pulang');
-  var btnAbsen = document.getElementById('btn-absen-pulang');
-
-  if (!navigator.geolocation) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> GPS tidak didukung browser</span>';
-    return;
-  }
-
-  if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendeteksi lokasi (multi-sampling)...';
-  if (btnGPS) { btnGPS.disabled = true; btnGPS.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...'; }
-  if (btnAbsen) { btnAbsen.disabled = true; btnAbsen.style.opacity = '0.5'; btnAbsen.style.cursor = 'not-allowed'; }
-
-  getAccuratePosition()
-    .then(function(reading) {
-      var latInput = document.getElementById('pulang_lat');
-      var lngInput = document.getElementById('pulang_lng');
-      var accInput = document.getElementById('pulang_acc');
-      var jarakInput = document.getElementById('pulang_jarak');
-
-      if (latInput) latInput.value = reading.lat;
-      if (lngInput) lngInput.value = reading.lng;
-      if (accInput) accInput.value = reading.acc;
-
-      // Hitung jarak ke sekolah
-      google.script.run
-        .withSuccessHandler(function(lokasi) {
-          var jarak = 0;
-          var radius = 100;
-          if (lokasi && lokasi.Latitude && lokasi.Longitude) {
-            var R = 6371000;
-            var dLat = (lokasi.Latitude - reading.lat) * Math.PI / 180;
-            var dLon = (lokasi.Longitude - reading.lng) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(reading.lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
-                    Math.sin(dLon/2) * Math.sin(dLon/2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            jarak = Math.round(R * c);
-            radius = lokasi.Radius_Meter || 100;
-          }
-
-          var radiusToleransi = radius * 2;
-          var acc = Math.round(reading.acc);
-          var okArea = jarak <= radiusToleransi;
-
-          if (jarakInput) jarakInput.value = jarak;
-
-          // Update status UI
-          var accLabel = acc <= 30 ? '🟢 Bagus' : acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
-          var warna = okArea ? '#065f46' : '#991b1b';
-          var bgStatus = okArea ? '#d1fae5' : '#fee2e2';
-
-          if (statusEl) {
-            statusEl.style.background = bgStatus;
-            statusEl.style.color = warna;
-            statusEl.style.fontWeight = '700';
-            statusEl.innerHTML =
-              '<div>✅ GPS Terkunci</div>' +
-              '<div style="font-size:10px;font-weight:600;margin-top:2px;">' +
-                'Lat: ' + reading.lat.toFixed(6) + '<br>' +
-                'Lng: ' + reading.lng.toFixed(6) + '<br>' +
-                '📏 Jarak: <strong>' + jarak + 'm</strong> (radius ' + radius + 'm)<br>' +
-                '🎯 Akurasi: ' + accLabel + ' (±' + acc + 'm)' +
-              '</div>';
-          }
-
-          if (btnGPS) {
-            btnGPS.disabled = false;
-            btnGPS.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh GPS';
-          }
-
-          // Aktifkan tombol Absen Pulang kalau dalam area
-          if (btnAbsen) {
-            if (okArea) {
-              btnAbsen.disabled = false;
-              btnAbsen.style.opacity = '1';
-              btnAbsen.style.cursor = 'pointer';
-            } else {
-              btnAbsen.disabled = true;
-              btnAbsen.style.opacity = '0.5';
-              btnAbsen.style.cursor = 'not-allowed';
-
-              // Toast warning kalau di luar area
-              Swal.fire({
-                icon: 'warning',
-                title: 'Di Luar Area Sekolah',
-                html: 'Jarak Anda <strong>' + jarak + 'm</strong><br>' +
-                      'Radius maksimal <strong>' + radiusToleransi + 'm</strong><br><br>' +
-                      '<span style="font-size:11px;color:#94a3b8;">Mendekatlah ke area sekolah & klik Refresh GPS.</span>',
-                confirmButtonColor: '#10b981',
-                timer: 4000,
-                showConfirmButton: true,
-                confirmButtonText: 'Mengerti'
-              });
-            }
-          }
-
-          // Toast sukses
-          if (okArea) {
-            Swal.fire({
-              icon: 'success',
-              title: 'GPS Terkunci!',
-              text: 'Jarak ' + jarak + 'm dari sekolah',
-              timer: 1500,
-              showConfirmButton: false,
-              toast: true,
-              position: 'top-end'
-            });
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (statusEl) {
-            statusEl.style.background = '#fee2e2';
-            statusEl.style.color = '#991b1b';
-            statusEl.innerHTML = '<i class="fas fa-times-circle"></i> Gagal cek sekolah: ' + err.message;
-          }
-          if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
-        })
-        .getLokasiSekolah();
-    })
-    .catch(function(err) {
-      if (statusEl) {
-        statusEl.style.background = '#fee2e2';
-        statusEl.style.color = '#991b1b';
-        statusEl.style.fontWeight = '700';
-        statusEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + (err.message || 'GPS gagal terkunci');
-      }
-      if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
-    });
 }
