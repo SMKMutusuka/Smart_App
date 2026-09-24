@@ -34,6 +34,7 @@ function formatJamSaja(waktu) {
 // Mode Kios: PC kamera langsung buka tanpa popup
 // =============================================
 var selfieWebcamStream = null;
+var _pulangGPSData = null;
 
 function isDesktopDevice() {
   return !/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -623,28 +624,70 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
                      '❌ Ditolak';
 
   var sudahPulang = existing.Waktu_Pulang && String(existing.Waktu_Pulang).trim() !== '';
-  var bisaPulang = existing.Status === 'Hadir' && !sudahPulang;
 
-  // ⭐ Card header info tanggal
+  // ⭐ Reset state GPS setiap kali render
+  _pulangGPSData = null;
+
   var infoCard =
     '<div class="card" style="background:var(--primary-light);border:1px solid var(--primary-border);margin-bottom:16px;">' +
       '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
     '</div>';
 
-  // ⭐ Satu card berisi: Hadir (kiri) + Pulang (kanan) berdekatan
+  // ⭐ Kolom Pulang
+  var pulangColumn = '';
+  if (sudahPulang) {
+    pulangColumn =
+      '<div style="background:#e0e7ff;border:1.5px solid #c7d2fe;border-radius:12px;padding:14px;">' +
+        '<div style="font-size:10px;font-weight:800;color:#3730a3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' +
+          '<i class="fas fa-sign-out-alt"></i> Pulang' +
+        '</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#312e81;line-height:1;">' + String(existing.Waktu_Pulang) + '</div>' +
+        '<div style="font-size:11px;color:#4338ca;margin-top:10px;font-weight:700;">✅ Sudah Pulang</div>' +
+      '</div>';
+  } else {
+    pulangColumn =
+      '<div style="background:#fff7ed;border:1.5px dashed #f59e0b;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;">' +
+
+        '<div style="font-size:10px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:0.06em;text-align:center;">' +
+          '<i class="fas fa-sign-out-alt"></i> Pulang' +
+        '</div>' +
+
+        // ⭐ TOMBOL GPS (mirip form Hadir)
+        '<div id="pulang-gps-section">' +
+          '<button type="button" class="btn btn-outline btn-sm" id="btn-ambil-gps-pulang" onclick="ambilGPSPulang()" ' +
+            'style="width:100%;min-height:34px;font-size:11px;border-color:#f59e0b;color:#92400e;background:#fff;font-weight:700;">' +
+            '<i class="fas fa-location-dot"></i> Dapatkan Lokasi Saya' +
+          '</button>' +
+          '<div id="pulang-gps-status" style="font-size:10.5px;color:#92400e;margin-top:6px;text-align:center;min-height:32px;background:#fffbeb;border-radius:6px;padding:5px 8px;line-height:1.4;">' +
+            'Klik untuk deteksi lokasi. WAJIB.' +
+          '</div>' +
+          '<input type="hidden" id="pulang_lat" value="">' +
+          '<input type="hidden" id="pulang_lng" value="">' +
+          '<input type="hidden" id="pulang_jarak" value="">' +
+          '<input type="hidden" id="pulang_acc" value="">' +
+        '</div>' +
+
+        // ⭐ TOMBOL ABSEN PULANG (disabled dulu)
+        '<button type="button" class="btn btn-primary" id="btn-absen-pulang" onclick="konfirmAbsenPulang()" ' +
+          'style="min-height:40px;background:linear-gradient(135deg,#f59e0b,#d97706);font-size:12.5px;opacity:0.5;cursor:not-allowed;" disabled>' +
+          '<i class="fas fa-sign-out-alt"></i> Absen Pulang' +
+        '</button>' +
+
+        '<div style="font-size:9.5px;color:#92400e;text-align:center;line-height:1.3;">' +
+          'Tanpa selfie — hanya verifikasi GPS' +
+        '</div>' +
+
+      '</div>';
+  }
+
   var gabungCard =
     '<div class="card" style="padding:20px;margin-bottom:16px;">' +
-
-      // Header
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">' +
         '<div style="font-weight:800;font-size:15px;color:#0f172a;"><i class="fas fa-check-circle" style="color:var(--primary);"></i> Absensi Anda</div>' +
         '<div><span class="' + (approvalMap[approvalStatus] || 'badge-approval-approved') + '" style="font-size:11px;padding:4px 14px;">' + approvalText + '</span></div>' +
       '</div>' +
-
-      // ⭐ Grid 2 kolom: Hadir | Pulang
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">' +
-
-        // Kolom kiri: MASUK
+        // Kolom MASUK
         '<div style="background:#ecfdf5;border:1.5px solid var(--primary-border);border-radius:12px;padding:14px;">' +
           '<div style="font-size:10px;font-weight:800;color:#047857;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' +
             '<i class="fas fa-sign-in-alt"></i> Masuk' +
@@ -655,38 +698,10 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
           '</div>' +
           (existing.Jarak_Meter ? '<div style="font-size:10.5px;color:#047857;margin-top:8px;">📏 ' + existing.Jarak_Meter + 'm dari sekolah</div>' : '') +
         '</div>' +
-
-        // Kolom kanan: PULANG
-        (sudahPulang ?
-          // Kalau sudah pulang
-          '<div style="background:#e0e7ff;border:1.5px solid #c7d2fe;border-radius:12px;padding:14px;">' +
-            '<div style="font-size:10px;font-weight:800;color:#3730a3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">' +
-              '<i class="fas fa-sign-out-alt"></i> Pulang' +
-            '</div>' +
-            '<div style="font-size:22px;font-weight:800;color:#312e81;line-height:1;">' + String(existing.Waktu_Pulang) + '</div>' +
-            '<div style="font-size:11px;color:#4338ca;margin-top:10px;font-weight:700;">✅ Sudah Pulang</div>' +
-          '</div>'
-          :
-          // Kalau belum pulang → tampilkan tombol pulang langsung DI SINI
-          '<div style="background:#fff7ed;border:1.5px dashed #f59e0b;border-radius:12px;padding:14px;text-align:center;display:flex;flex-direction:column;justify-content:center;">' +
-            '<div style="font-size:10px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' +
-              '<i class="fas fa-sign-out-alt"></i> Pulang' +
-            '</div>' +
-            '<button type="button" class="btn btn-primary" onclick="konfirmAbsenPulang()" ' +
-              'style="min-height:42px;padding:0 16px;background:linear-gradient(135deg,#f59e0b,#d97706);font-size:13px;white-space:nowrap;">' +
-              '<i class="fas fa-sign-out-alt"></i> Absen Pulang' +
-            '</button>' +
-            '<div style="font-size:10px;color:#92400e;margin-top:8px;line-height:1.3;">' +
-              '<i class="fas fa-satellite"></i> Hanya konfirmasi GPS<br>Tanpa selfie' +
-            '</div>' +
-          '</div>'
-        ) +
-
+        // Kolom PULANG
+        pulangColumn +
       '</div>' +
-
-      // Keterangan (kalau ada)
       (existing.Keterangan ? '<div style="font-size:11.5px;color:#475569;background:#f8fafc;border-radius:8px;padding:10px 12px;margin-top:4px;"><strong>Ket:</strong> ' + escapeHtml(existing.Keterangan) + '</div>' : '') +
-
     '</div>';
 
   container.innerHTML = infoCard + gabungCard;
@@ -2233,4 +2248,140 @@ function konfirmAbsenPulang() {
         ''
       );
   });
+}
+
+// =============================================
+// ⭐ AMBIL GPS UNTUK ABSEN PULANG
+// (versi tombol manual — mirip "Dapatkan Lokasi" di form Hadir)
+// =============================================
+function ambilGPSPulang() {
+  var statusEl = document.getElementById('pulang-gps-status');
+  var btnGPS = document.getElementById('btn-ambil-gps-pulang');
+  var btnAbsen = document.getElementById('btn-absen-pulang');
+
+  if (!navigator.geolocation) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> GPS tidak didukung browser</span>';
+    return;
+  }
+
+  if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendeteksi lokasi (multi-sampling)...';
+  if (btnGPS) { btnGPS.disabled = true; btnGPS.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...'; }
+  if (btnAbsen) { btnAbsen.disabled = true; btnAbsen.style.opacity = '0.5'; btnAbsen.style.cursor = 'not-allowed'; }
+
+  getAccuratePosition()
+    .then(function(reading) {
+      var latInput = document.getElementById('pulang_lat');
+      var lngInput = document.getElementById('pulang_lng');
+      var accInput = document.getElementById('pulang_acc');
+      var jarakInput = document.getElementById('pulang_jarak');
+
+      if (latInput) latInput.value = reading.lat;
+      if (lngInput) lngInput.value = reading.lng;
+      if (accInput) accInput.value = reading.acc;
+
+      // Hitung jarak ke sekolah
+      google.script.run
+        .withSuccessHandler(function(lokasi) {
+          var jarak = 0;
+          var radius = 100;
+          if (lokasi && lokasi.Latitude && lokasi.Longitude) {
+            var R = 6371000;
+            var dLat = (lokasi.Latitude - reading.lat) * Math.PI / 180;
+            var dLon = (lokasi.Longitude - reading.lng) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(reading.lat * Math.PI / 180) * Math.cos(lokasi.Latitude * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            jarak = Math.round(R * c);
+            radius = lokasi.Radius_Meter || 100;
+          }
+
+          var radiusToleransi = radius * 2;
+          var acc = Math.round(reading.acc);
+          var okArea = jarak <= radiusToleransi;
+
+          if (jarakInput) jarakInput.value = jarak;
+
+          // Update status UI
+          var accLabel = acc <= 30 ? '🟢 Bagus' : acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
+          var warna = okArea ? '#065f46' : '#991b1b';
+          var bgStatus = okArea ? '#d1fae5' : '#fee2e2';
+
+          if (statusEl) {
+            statusEl.style.background = bgStatus;
+            statusEl.style.color = warna;
+            statusEl.style.fontWeight = '700';
+            statusEl.innerHTML =
+              '<div>✅ GPS Terkunci</div>' +
+              '<div style="font-size:10px;font-weight:600;margin-top:2px;">' +
+                'Lat: ' + reading.lat.toFixed(6) + '<br>' +
+                'Lng: ' + reading.lng.toFixed(6) + '<br>' +
+                '📏 Jarak: <strong>' + jarak + 'm</strong> (radius ' + radius + 'm)<br>' +
+                '🎯 Akurasi: ' + accLabel + ' (±' + acc + 'm)' +
+              '</div>';
+          }
+
+          if (btnGPS) {
+            btnGPS.disabled = false;
+            btnGPS.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh GPS';
+          }
+
+          // Aktifkan tombol Absen Pulang kalau dalam area
+          if (btnAbsen) {
+            if (okArea) {
+              btnAbsen.disabled = false;
+              btnAbsen.style.opacity = '1';
+              btnAbsen.style.cursor = 'pointer';
+            } else {
+              btnAbsen.disabled = true;
+              btnAbsen.style.opacity = '0.5';
+              btnAbsen.style.cursor = 'not-allowed';
+
+              // Toast warning kalau di luar area
+              Swal.fire({
+                icon: 'warning',
+                title: 'Di Luar Area Sekolah',
+                html: 'Jarak Anda <strong>' + jarak + 'm</strong><br>' +
+                      'Radius maksimal <strong>' + radiusToleransi + 'm</strong><br><br>' +
+                      '<span style="font-size:11px;color:#94a3b8;">Mendekatlah ke area sekolah & klik Refresh GPS.</span>',
+                confirmButtonColor: '#10b981',
+                timer: 4000,
+                showConfirmButton: true,
+                confirmButtonText: 'Mengerti'
+              });
+            }
+          }
+
+          // Toast sukses
+          if (okArea) {
+            Swal.fire({
+              icon: 'success',
+              title: 'GPS Terkunci!',
+              text: 'Jarak ' + jarak + 'm dari sekolah',
+              timer: 1500,
+              showConfirmButton: false,
+              toast: true,
+              position: 'top-end'
+            });
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (statusEl) {
+            statusEl.style.background = '#fee2e2';
+            statusEl.style.color = '#991b1b';
+            statusEl.innerHTML = '<i class="fas fa-times-circle"></i> Gagal cek sekolah: ' + err.message;
+          }
+          if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
+        })
+        .getLokasiSekolah();
+    })
+    .catch(function(err) {
+      if (statusEl) {
+        statusEl.style.background = '#fee2e2';
+        statusEl.style.color = '#991b1b';
+        statusEl.style.fontWeight = '700';
+        statusEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + (err.message || 'GPS gagal terkunci');
+      }
+      if (btnGPS) { btnGPS.disabled = false; btnGPS.innerHTML = '<i class="fas fa-location-dot"></i> Coba Lagi'; }
+    });
 }
