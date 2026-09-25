@@ -1086,7 +1086,6 @@ function renderApprovalList(pendingList) {
     return;
   }
 
-  // ⭐ Toolbar aksi (bulk)
   var toolbarHtml =
     '<div class="card" style="padding:12px 16px;background:#f8fafc;border:1px solid var(--border);margin-bottom:12px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
@@ -1098,17 +1097,26 @@ function renderApprovalList(pendingList) {
           '<button type="button" class="btn btn-outline btn-sm" onclick="toggleSelectAllApproval()" style="min-height:34px;">' +
             '<i class="fas fa-check-square"></i> Pilih Semua' +
           '</button>' +
-          '<button type="button" class="btn btn-approve btn-sm" onclick="bulkApprove()" id="btn-bulk-approve" disabled style="min-height:34px;opacity:0.5;">' +
-            '<i class="fas fa-check-circle"></i> Setujui Terpilih' +
+          '<button type="button" class="btn btn-sm" onclick="bulkKonfirmasiAlpa()" id="btn-bulk-alpa" disabled ' +
+            'style="min-height:34px;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;opacity:0.5;">' +
+            '<i class="fas fa-user-times"></i> Konfirmasi Alpa' +
           '</button>' +
-          '<button type="button" class="btn btn-reject btn-sm" onclick="bulkReject()" id="btn-bulk-reject" disabled style="min-height:34px;opacity:0.5;">' +
-            '<i class="fas fa-times-circle"></i> Tolak Terpilih' +
+          '<button type="button" class="btn btn-approve btn-sm" onclick="bulkUbahHadir()" id="btn-bulk-hadir" disabled style="min-height:34px;opacity:0.5;">' +
+            '<i class="fas fa-check-circle"></i> Ubah ke Hadir' +
+          '</button>' +
+          '<button type="button" class="btn btn-outline btn-sm" onclick="bulkReject()" id="btn-bulk-hapus" disabled ' +
+            'style="min-height:34px;opacity:0.5;">' +
+            '<i class="fas fa-trash"></i> Hapus' +
           '</button>' +
         '</div>' +
       '</div>' +
+      '<div style="font-size:11px;color:#64748b;margin-top:8px;line-height:1.5;">' +
+        '💡 <strong>Konfirmasi Alpa</strong> = siswa memang tidak hadir → masuk dashboard + WA. ' +
+        '<strong>Ubah ke Hadir</strong> = siswa telat datang. ' +
+        '<strong>Hapus</strong> = salah input.' +
+      '</div>' +
     '</div>';
 
-  // ⭐ Tabel
   var tableHtml =
     '<div class="laporan-container">' +
       '<div class="laporan-scroll">' +
@@ -1206,19 +1214,19 @@ function onApprovalCheckChange() {
   var headerCb = document.getElementById('cb-header-approval');
   if (headerCb) headerCb.checked = allChecked && checkboxes.length > 0;
 
-  var btnApprove = document.getElementById('btn-bulk-approve');
-  var btnReject = document.getElementById('btn-bulk-reject');
+  // Update 3 tombol
+  var btns = [
+    document.getElementById('btn-bulk-alpa'),
+    document.getElementById('btn-bulk-hadir'),
+    document.getElementById('btn-bulk-hapus')
+  ];
 
-  if (btnApprove) {
-    btnApprove.disabled = (checked === 0);
-    btnApprove.style.opacity = (checked === 0) ? '0.5' : '1';
-    btnApprove.style.cursor = (checked === 0) ? 'not-allowed' : 'pointer';
-  }
-  if (btnReject) {
-    btnReject.disabled = (checked === 0);
-    btnReject.style.opacity = (checked === 0) ? '0.5' : '1';
-    btnReject.style.cursor = (checked === 0) ? 'not-allowed' : 'pointer';
-  }
+  btns.forEach(function(btn) {
+    if (!btn) return;
+    btn.disabled = (checked === 0);
+    btn.style.opacity = (checked === 0) ? '0.5' : '1';
+    btn.style.cursor = (checked === 0) ? 'not-allowed' : 'pointer';
+  });
 }
 
 // ⭐ Ambil ID yang dicentang
@@ -1230,7 +1238,8 @@ function getSelectedApprovalIds() {
 }
 
 // ⭐ Bulk Approve
-function bulkApprove() {
+// ⭐ KONFIRMASI ALPA (bulk)
+function bulkKonfirmasiAlpa() {
   var ids = getSelectedApprovalIds();
   if (ids.length === 0) {
     Swal.fire({ icon: 'warning', title: 'Tidak Ada Dipilih', text: 'Pilih minimal 1 siswa.' });
@@ -1238,19 +1247,19 @@ function bulkApprove() {
   }
 
   Swal.fire({
-    title: 'Setujui ' + ids.length + ' Absensi?',
-    html: 'Semua yang dipilih akan disetujui.<br>' +
-          '<span style="font-size:11px;color:#94a3b8;">Siswa Alpa → otomatis jadi Hadir.</span>',
-    icon: 'question',
+    title: 'Konfirmasi ' + ids.length + ' Siswa ALPA?',
+    html: 'Siswa yang dipilih akan <strong>dikonfirmasi ALPA</strong>.<br><br>' +
+          '<span style="font-size:12px;color:#991b1b;">⚠️ Data akan muncul di dashboard & notif WA.</span>',
+    icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-check-circle"></i> Ya, Setujui Semua',
+    confirmButtonText: '<i class="fas fa-user-times"></i> Ya, Konfirmasi Alpa',
     cancelButtonText: 'Batal',
-    confirmButtonColor: '#10b981'
+    confirmButtonColor: '#dc2626'
   }).then(function(r) {
     if (!r.isConfirmed) return;
 
     showLoading();
-    var btn = document.getElementById('btn-bulk-approve');
+    var btn = document.getElementById('btn-bulk-alpa');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...'; }
 
     google.script.run
@@ -1265,10 +1274,53 @@ function bulkApprove() {
       })
       .withFailureHandler(function(err) {
         hideLoading();
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Setujui Terpilih'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-times"></i> Konfirmasi Alpa'; }
         Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
       })
       .approveAbsensiBatch(ids);
+  });
+}
+
+// ⭐ UBAH KE HADIR (bulk)
+function bulkUbahHadir() {
+  var ids = getSelectedApprovalIds();
+  if (ids.length === 0) {
+    Swal.fire({ icon: 'warning', title: 'Tidak Ada Dipilih', text: 'Pilih minimal 1 siswa.' });
+    return;
+  }
+
+  Swal.fire({
+    title: 'Ubah ' + ids.length + ' Siswa ke HADIR?',
+    html: 'Gunakan ini untuk <strong>siswa yang telat datang</strong>.<br><br>' +
+          '<span style="font-size:12px;color:#065f46;">Status akan jadi Hadir, tidak masuk WA notif.</span>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-check-circle"></i> Ya, Ubah ke Hadir',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#10b981'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+
+    showLoading();
+    var btn = document.getElementById('btn-bulk-hadir');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...'; }
+
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        hideLoading();
+        Swal.fire({
+          icon: 'success', title: 'Berhasil', text: msg,
+          timer: 1800, showConfirmButton: false, toast: true, position: 'top-end'
+        });
+        loadApprovalDashboard();
+        loadDashboardCharts();
+      })
+      .withFailureHandler(function(err) {
+        hideLoading();
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Ubah ke Hadir'; }
+        Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+      })
+      .ubahKeHadirBatch(ids);
   });
 }
 
