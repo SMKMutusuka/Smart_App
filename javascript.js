@@ -1333,13 +1333,13 @@ function bulkReject() {
   }
 
   Swal.fire({
-    title: 'Tolak ' + ids.length + ' Absensi?',
+    title: 'Hapus ' + ids.length + ' Data?',
     html: '<strong>Perhatian:</strong><br>' +
-          '• Auto-Alpa → akan <strong>dihapus</strong> (siswa dianggap tidak Alpa)<br>' +
-          '• Absen mandiri → akan berubah jadi <strong>Alpa</strong>',
+          '• Auto-Alpa → <strong>dihapus permanen</strong><br>' +
+          '• Absen mandiri → berubah jadi <strong>Alpa Rejected</strong>',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-times-circle"></i> Ya, Tolak Semua',
+    confirmButtonText: '<i class="fas fa-trash"></i> Ya, Hapus',
     cancelButtonText: 'Batal',
     confirmButtonColor: '#ef4444',
     cancelButtonColor: '#64748b'
@@ -1347,14 +1347,14 @@ function bulkReject() {
     if (!r.isConfirmed) return;
 
     showLoading();
-    var btn = document.getElementById('btn-bulk-reject');
+    var btn = document.getElementById('btn-bulk-hapus');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...'; }
 
     google.script.run
       .withSuccessHandler(function(msg) {
         hideLoading();
         Swal.fire({
-          icon: 'success', title: 'Diproses', text: msg,
+          icon: 'success', title: 'Dihapus', text: msg,
           timer: 1800, showConfirmButton: false, toast: true, position: 'top-end'
         });
         loadApprovalDashboard();
@@ -1362,17 +1362,11 @@ function bulkReject() {
       })
       .withFailureHandler(function(err) {
         hideLoading();
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-times-circle"></i> Tolak Terpilih'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Hapus'; }
         Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
       })
       .rejectAbsensiBatch(ids);
   });
-}
-
-function resetFilterApproval() {
-  var sel = document.getElementById('approval_filter_kelas');
-  if (sel) sel.value = '';
-  loadApprovalDashboard();
 }
 
 function loadApprovalStatsOnly() {
