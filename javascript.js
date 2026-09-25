@@ -191,8 +191,7 @@ function buildWaMessage(namaSiswa, namaKelas, tanggal, status, keterangan, namaS
          "🏫 Kelas  : " + namaKelas + "\n" +
          "📅 Tanggal: " + tanggal + "\n" +
          "❗ Status : " + statusText + "\n" +
-         "📝 Ket.   : " + ket + "\n\n" +
-         "Mohon konfirmasi kepada pihak sekolah.\n\n" +
+         "Mohon segera konfirmasi ke Wali Kelasnya nggih. 🙏.\n\n" +
          "Terima kasih.\n" +
          "- " + sekolah;
 }
