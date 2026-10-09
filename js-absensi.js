@@ -1035,6 +1035,10 @@ function loadStudentKelasInfo() {
 // =============================================
 // ⭐ GET STUDENT LOCATION (untuk form Hadir)
 // =============================================
+// =============================================
+// ⭐ GET STUDENT LOCATION — VERSI SOFT-FAIL
+// GPS gagal? tetap lanjut (backend akan tandai Pending)
+// =============================================
 function getStudentLocation() {
   var status = document.querySelector('input[name="student_status"]:checked');
   if (status && status.value !== 'Hadir') {
@@ -1046,43 +1050,128 @@ function getStudentLocation() {
   var infoDiv = document.getElementById('gps-info');
   var latInput = document.getElementById('student_latitude');
   var lngInput = document.getElementById('student_longitude');
+  var accInput = document.getElementById('student_gps_accuracy');
 
   if (!navigator.geolocation) {
     if (statusText) statusText.innerHTML = '<span class="gps-status inactive"><span class="gps-dot"></span> GPS tidak didukung</span>';
-    if (infoDiv) infoDiv.innerHTML = '💡 Anda tetap bisa absen. Isi keterangan alasan GPS tidak bisa diakses.';
+    if (infoDiv) {
+      infoDiv.innerHTML =
+        '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;color:#78350f;">' +
+          '<strong>📌 Mode Soft-Fail</strong><br>' +
+          '<span style="font-size:11px;">GPS tidak tersedia. Lanjutkan absen — guru akan verifikasi via selfie Anda.</span>' +
+        '</div>';
+    }
     return;
   }
 
-  if (statusText) statusText.innerHTML = '<span class="gps-status loading"><span class="gps-dot"></span> Mendeteksi lokasi (multi-sampling)...</span>';
-  if (infoDiv) infoDiv.innerHTML = '⏳ Membaca GPS beberapa kali untuk akurasi terbaik...';
+  if (statusText) statusText.innerHTML = '<span class="gps-status loading"><span class="gps-dot"></span> Mendeteksi lokasi...</span>';
+  if (infoDiv) infoDiv.innerHTML = '⏳ Membaca GPS (maks 15 detik)...';
 
+  // ⭐ COBA 1: GPS presisi tinggi (multi-sampling)
   getAccuratePosition()
     .then(function(reading) {
       if (latInput) latInput.value = reading.lat;
       if (lngInput) lngInput.value = reading.lng;
-      var accInput = document.getElementById('student_gps_accuracy');
       if (accInput) accInput.value = reading.acc;
 
       if (statusText) statusText.innerHTML = '<span class="gps-status active"><span class="gps-dot"></span> Lokasi didapat ✓</span>';
       if (infoDiv) {
-        var quality = reading.acc <= 30 ? '🟢 Bagus' : reading.acc <= 80 ? '🟡 Sedang' : '🔴 Rendah';
+        var quality = reading.acc <= 30 ? '🟢 Bagus' : reading.acc <= 100 ? '🟡 Sedang' : '🟠 Lemah';
         infoDiv.innerHTML = 'Lat: ' + reading.lat.toFixed(6) +
                             ' | Lng: ' + reading.lng.toFixed(6) +
-                            ' | Akurasi: <strong>±' + Math.round(reading.acc) + 'm</strong> ' + quality +
-                            ' <small>(' + reading.samples + ' sampel)</small>';
+                            ' | Akurasi: <strong>±' + Math.round(reading.acc) + 'm</strong> ' + quality;
       }
 
       checkDistanceToClass(reading.lat, reading.lng, reading.acc);
     })
     .catch(function(err) {
-      if (statusText) statusText.innerHTML = '<span class="gps-status inactive"><span class="gps-dot"></span> Gagal deteksi GPS</span>';
-      if (infoDiv) {
-        infoDiv.innerHTML = '<span style="color:#ef4444;">' + err.message + '</span><br>' +
-                            '💡 <strong>Coba lagi:</strong> Keluar ruangan / dekat jendela, aktifkan GPS Akurasi Tinggi, tunggu 5-10 detik lalu klik ulang.';
-      }
-      var ketHint = document.getElementById('keterangan-hint');
-      if (ketHint) ketHint.style.display = 'block';
+      // ⭐ COBA 2: Network location (WiFi/cell tower) — lebih cepat, akurasi rendah
+      if (infoDiv) infoDiv.innerHTML = '⚠️ GPS presisi gagal, mencoba mode alternatif...';
+
+      cobaNetworkLocation()
+        .then(function(reading) {
+          if (latInput) latInput.value = reading.lat;
+          if (lngInput) lngInput.value = reading.lng;
+          if (accInput) accInput.value = reading.acc;
+
+          if (statusText) statusText.innerHTML = '<span class="gps-status loading"><span class="gps-dot"></span> Lokasi Approx</span>';
+          if (infoDiv) {
+            infoDiv.innerHTML =
+              '<div style="background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;padding:10px 12px;color:#0369a1;">' +
+                '<strong>📍 Mode GPS Lemah (Approx)</strong><br>' +
+                '<span style="font-size:11px;">' +
+                  'Lat: ' + reading.lat.toFixed(6) + ' | Lng: ' + reading.lng.toFixed(6) + '<br>' +
+                  'Akurasi: <strong>±' + Math.round(reading.acc) + 'm</strong> (network)' +
+                '</span><br>' +
+                '<span style="font-size:10.5px;color:#f59e0b;font-weight:700;">📌 Absen akan perlu verifikasi guru</span>' +
+              '</div>';
+          }
+
+          checkDistanceToClass(reading.lat, reading.lng, reading.acc);
+        })
+        .catch(function(err2) {
+          // ⭐ COBA 3: GAGAL TOTAL → Soft-Fail Mode
+          if (statusText) statusText.innerHTML = '<span class="gps-status inactive"><span class="gps-dot"></span> GPS Tidak Aktif</span>';
+          if (infoDiv) {
+            infoDiv.innerHTML =
+              '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;color:#78350f;">' +
+                '<strong>📌 Mode Soft-Fail Aktif</strong><br>' +
+                '<span style="font-size:11px;">GPS tidak tersedia. Anda tetap bisa absen, tapi guru akan <strong>verifikasi manual</strong> via selfie Anda.</span><br><br>' +
+                '<span style="font-size:10.5px;opacity:0.8;">💡 Tips: Coba keluar ruangan, dekat jendela, atau aktifkan GPS Akurasi Tinggi.</span>' +
+              '</div>';
+          }
+
+          // Kosongkan input GPS — backend akan deteksi & tandai Pending
+          if (latInput) latInput.value = '';
+          if (lngInput) lngInput.value = '';
+          if (accInput) accInput.value = '';
+
+          // Tampilkan hint
+          var ketHint = document.getElementById('keterangan-hint');
+          if (ketHint) {
+            ketHint.style.display = 'block';
+            ketHint.innerHTML = '<i class="fas fa-info-circle"></i> GPS tidak tersedia — absen Anda akan <strong>menunggu verifikasi guru</strong>. Isi keterangan alasan di kolom bawah.';
+            ketHint.style.color = '#0369a1';
+          }
+        });
     });
+}
+
+// =============================================
+// ⭐ FUNGSI BARU: Network Location
+// Pakai WiFi / Cell Tower — akurasi rendah tapi sering berhasil indoor
+// =============================================
+function cobaNetworkLocation() {
+  return new Promise(function(resolve, reject) {
+    if (!navigator.geolocation) {
+      reject(new Error('GPS tidak didukung'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: pos.coords.accuracy,
+          samples: 1,
+          network: true
+        });
+      },
+      function(err) {
+        var msg = 'Network location gagal';
+        if (err.code === 1) msg = 'Izin lokasi ditolak';
+        else if (err.code === 2) msg = 'Sinyal lokasi tidak ditemukan';
+        else if (err.code === 3) msg = 'Timeout lokasi';
+        reject(new Error(msg));
+      },
+      {
+        enableHighAccuracy: false,   // ⭐ Tidak butuh presisi tinggi
+        timeout: 8000,                // lebih cepat
+        maximumAge: 60000             // toleransi cache 1 menit
+      }
+    );
+  });
 }
 
 // =============================================
@@ -1147,6 +1236,10 @@ function updateStudentFileName(input) {
 // =============================================
 // ⭐ SUBMIT ABSEN SISWA (Hadir / Sakit / Izin)
 // =============================================
+// =============================================
+// ⭐ SUBMIT ABSEN SISWA — Versi SOFT-FAIL
+// GPS tidak wajib di frontend — backend yang handle
+// =============================================
 function submitStudentSelfAbsen(e) {
   e.preventDefault();
   if (!currentUser || !currentUser.student) return;
@@ -1162,7 +1255,7 @@ function submitStudentSelfAbsen(e) {
   var accInput = document.getElementById('student_gps_accuracy');
   var s = currentUser.student;
 
-  // ⭐ Validasi — HADIR wajib selfie + GPS
+  // ⭐ Validasi SELFIE (WAJIB untuk Hadir)
   if (status === 'Hadir') {
     if (!hasSelfieCapture()) {
       Swal.fire({
@@ -1173,22 +1266,29 @@ function submitStudentSelfAbsen(e) {
       return;
     }
 
-    if (!latInput.value || !lngInput.value) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Lokasi GPS Belum Terdeteksi',
-        html: 'Anda <strong>harus berada di area sekolah</strong> untuk melakukan presensi.<br><br>' +
-              'Langkah-langkah:<br>' +
-              '1. Klik tombol <strong>Dapatkan Lokasi Saya</strong><br>' +
-              '2. Izinkan akses lokasi di browser<br>' +
-              '3. Tunggu sampai muncul jarak dari sekolah<br>' +
-              '4. Kalau masih gagal, coba keluar ruangan / dekat jendela<br>' +
-              '5. Pastikan GPS HP dalam mode <strong>Akurasi Tinggi</strong>',
-        confirmButtonText: 'Baik, Coba Lagi',
+    // ⭐ GPS TIDAK WAJIB LAGI — kalau tidak ada, backend akan tandai Pending
+    var adaGPS = latInput && latInput.value && lngInput && lngInput.value;
+
+    if (!adaGPS) {
+      // Konfirmasi khusus: user tahu absen tanpa GPS akan Pending
+      var konfirmasi = await Swal.fire({
+        icon: 'info',
+        title: 'GPS Tidak Tersedia',
+        html: 'Anda tetap bisa absen, tapi <strong>absen akan menunggu verifikasi guru</strong>.<br><br>' +
+              '<span style="font-size:12px;color:#64748b;">Guru akan cek selfie & jam Anda sebelum menyetujui.</span>',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-paper-plane"></i> Ya, Lanjut Absen',
+        cancelButtonText: 'Coba GPS Lagi',
         confirmButtonColor: '#10b981'
       });
-      return;
+
+      if (!konfirmasi.isConfirmed) {
+        // User pilih "Coba GPS Lagi"
+        getStudentLocation();
+        return;
+      }
     }
+
   } else if (status === 'Sakit' || status === 'Izin') {
     if (!fileInput.files || !fileInput.files[0]) {
       Swal.fire({ icon: 'warning', title: 'Surat Wajib',
@@ -1246,8 +1346,8 @@ function submitStudentSelfAbsen(e) {
               keterangan,
               suratBase64,
               selfieBase64,
-              latInput.value,
-              lngInput.value,
+              latInput ? latInput.value : '',
+              lngInput ? lngInput.value : '',
               accInput ? accInput.value : ''
             );
         }
