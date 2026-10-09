@@ -1,3 +1,11 @@
+// =============================================
+// JAVASCRIPT ABSENSI — Siswa & GTK
+// File: js-absensi.js
+// Versi: v2026-10-09-softfail-clean
+// ⭐ FIX: async pada submitStudentSelfAbsen
+// ⭐ UPDATE: Teks UI selaras dengan mode Soft-Fail GPS
+// =============================================
+
 // ⭐ KONSTANTA FRONTEND — Bulan Indonesia
 var BULAN_INDONESIA = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -527,7 +535,7 @@ function submitFinalAbsensi(tgl, kelas, payload) {
 // =============================================
 function prepareStudentAbsenPage() {
   if (!currentUser || !currentUser.student) return;
-  
+
   // ⭐ BLOKIR kalau siswa PKL aktif
   if (typeof pklInfoSiswa !== 'undefined' && pklInfoSiswa) {
     var container = document.getElementById('student-absen-page-content');
@@ -546,7 +554,7 @@ function prepareStudentAbsenPage() {
     }
     return;
   }
-  
+
   var todayStr = todayLocalISO();
   var studentNisClean = String(currentUser.student.NIS).trim();
 
@@ -573,7 +581,6 @@ function prepareStudentAbsenPage() {
 
 // =============================================
 // ⭐ RENDER: TAMPILAN LOCKED (siswa sudah absen masuk)
-// Card Hadir (kiri) + Card Pulang dengan tombol GPS (kanan)
 // =============================================
 function renderStudentAbsenLocked(container, todayStr, existing) {
   var badgeClass = { 'Hadir': 'badge-hadir', 'Sakit': 'badge-sakit', 'Izin': 'badge-izin', 'Alpa': 'badge-alpa' }[existing.Status] || 'badge-hadir';
@@ -616,7 +623,6 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
           '<i class="fas fa-sign-out-alt"></i> Pulang' +
         '</div>' +
 
-        // ⭐ TOMBOL GPS (mirip form Hadir)
         '<div>' +
           '<button type="button" class="btn btn-outline btn-sm" id="btn-ambil-gps-pulang" onclick="ambilGPSPulang()" ' +
             'style="width:100%;min-height:34px;font-size:11px;border-color:#f59e0b;color:#92400e;background:#fff;font-weight:700;">' +
@@ -631,7 +637,6 @@ function renderStudentAbsenLocked(container, todayStr, existing) {
           '<input type="hidden" id="pulang_acc" value="">' +
         '</div>' +
 
-        // ⭐ TOMBOL ABSEN PULANG (disabled dulu)
         '<button type="button" class="btn btn-primary" id="btn-absen-pulang" onclick="konfirmAbsenPulang()" ' +
           'style="min-height:40px;background:linear-gradient(135deg,#f59e0b,#d97706);font-size:12.5px;opacity:0.5;cursor:not-allowed;" disabled>' +
           '<i class="fas fa-sign-out-alt"></i> Absen Pulang' +
@@ -888,7 +893,7 @@ function renderStudentAbsenForm(todayStr) {
       '<div style="font-size:15px;font-weight:800;color:var(--primary-dark);"><i class="far fa-calendar-check"></i> Absensi Hari Ini: ' + formatDateDisplay(todayStr) + '</div>' +
       '<div style="font-size:12.5px;color:#065f46;margin-top:4px;">' +
         'Silakan tentukan status kehadiran Anda. ' +
-        '<strong style="color:var(--primary-dark);">✅ Hadir: wajib GPS + Selfie</strong> | ' +
+        '<strong style="color:var(--primary-dark);">✅ Hadir: wajib Selfie (GPS disarankan)</strong> | ' +
         '<strong style="color:#3b82f6;">📄 Sakit/Izin: wajib upload surat</strong>' +
       '</div>' +
     '</div>' +
@@ -896,8 +901,8 @@ function renderStudentAbsenForm(todayStr) {
     '<div class="card" style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 18px;margin-bottom:16px;">' +
       '<div style="font-size:12.5px;color:#78350f;line-height:1.5;">' +
       '<i class="fas fa-info-circle" style="color:#d97706;"></i> <strong>Info:</strong> ' +
-      'Presensi Hadir <strong>WAJIB</strong> berada di area sekolah dan wajib foto selfie. ' +
-      'Pastikan GPS HP aktif dengan mode <strong>Akurasi Tinggi</strong>.' +
+      'Presensi Hadir <strong>WAJIB foto selfie</strong>. GPS disarankan untuk verifikasi otomatis. ' +
+      'Jika GPS gagal / tidak akurat, absen Anda akan <strong>menunggu verifikasi guru</strong>.' +
       '</div>' +
     '</div>' +
 
@@ -905,14 +910,14 @@ function renderStudentAbsenForm(todayStr) {
       '<form id="formStudentSelfAbsen" onsubmit="submitStudentSelfAbsen(event)">' +
 
         '<div class="form-group" id="gps-group">' +
-          '<label><i class="fas fa-satellite"></i> Lokasi GPS <span style="color:var(--primary-dark);font-weight:700;">(Wajib untuk Hadir)</span></label>' +
+          '<label><i class="fas fa-satellite"></i> Lokasi GPS <span style="color:#f59e0b;font-weight:700;">(Disarankan — Percepat Verifikasi)</span></label>' +
           '<div id="gps-status-container">' +
             '<button type="button" class="btn btn-outline btn-sm" onclick="getStudentLocation()" style="min-height:36px;">' +
               '<i class="fas fa-location-dot"></i> Dapatkan Lokasi Saya' +
             '</button>' +
             '<span id="gps-status-text" style="margin-left:10px;font-size:12px;color:var(--text-muted);">Belum diambil</span>' +
           '</div>' +
-          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. WAJIB — tidak bisa lanjut tanpa GPS.</div>' +
+          '<div id="gps-info" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Klik tombol untuk deteksi lokasi. Jika GPS gagal, Anda tetap bisa absen — guru akan verifikasi via selfie.</div>' +
           '<input type="hidden" id="student_latitude" value="">' +
           '<input type="hidden" id="student_longitude" value="">' +
           '<input type="hidden" id="student_gps_accuracy" value="">' +
@@ -1021,7 +1026,7 @@ function loadStudentKelasInfo() {
         if (lokasi && lokasi.Latitude && lokasi.Longitude) {
           infoDiv.innerHTML = '📍 Lokasi sekolah: <strong>' + (lokasi.Nama_Sekolah || 'SMK') + '</strong>' +
             ' (Radius ' + (lokasi.Radius_Meter || 100) + 'm) <br>' +
-            '<span style="color:#64748b;">WAJIB berada di area sekolah untuk bisa absen Hadir.</span>';
+            '<span style="color:#64748b;">Disarankan berada di area sekolah untuk verifikasi otomatis.</span>';
         } else {
           infoDiv.innerHTML = '⚠️ Lokasi sekolah belum diatur admin. Hubungi admin terlebih dahulu.';
           infoDiv.style.color = '#f59e0b';
@@ -1032,9 +1037,6 @@ function loadStudentKelasInfo() {
     .getLokasiSekolah();
 }
 
-// =============================================
-// ⭐ GET STUDENT LOCATION (untuk form Hadir)
-// =============================================
 // =============================================
 // ⭐ GET STUDENT LOCATION — VERSI SOFT-FAIL
 // GPS gagal? tetap lanjut (backend akan tandai Pending)
@@ -1203,8 +1205,8 @@ function checkDistanceToClass(lat, lng, accuracy) {
         status = '✅ Dalam area sekolah';
         color = '#10b981';
       } else {
-        status = '❌ Di luar area (tidak bisa absen)';
-        color = '#ef4444';
+        status = '⚠️ Di luar area — perlu verifikasi guru';
+        color = '#f59e0b';
       }
 
       if (infoDiv) {
@@ -1234,13 +1236,10 @@ function updateStudentFileName(input) {
 }
 
 // =============================================
-// ⭐ SUBMIT ABSEN SISWA (Hadir / Sakit / Izin)
-// =============================================
-// =============================================
 // ⭐ SUBMIT ABSEN SISWA — Versi SOFT-FAIL
-// GPS tidak wajib di frontend — backend yang handle
+// ⭐ FIX: async function (dibutuhkan untuk await Swal)
 // =============================================
-function submitStudentSelfAbsen(e) {
+async function submitStudentSelfAbsen(e) {
   e.preventDefault();
   if (!currentUser || !currentUser.student) return;
 
@@ -2049,7 +2048,7 @@ function openGTKSelfieWebcam() {
   })
   .catch(function(err) {
     console.error('[GTK Webcam] Error:', err);
-    
+
     var pesan = 'Gagal akses kamera: ' + (err.message || err.name);
     if (err.name === 'NotAllowedError') pesan = 'Izin kamera ditolak.';
     else if (err.name === 'NotReadableError') pesan = 'Kamera sedang dipakai aplikasi lain (Zoom/Meet).';
