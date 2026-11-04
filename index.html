@@ -933,10 +933,6 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
               <input type="tel" id="dudi_wa" class="form-control" placeholder="62812345678">
             </div>
           </div>
-            <div class="form-group">
-            <label for="dudi_foto"><i class="fas fa-image"></i> Link Foto Depan Bengkel (Opsional)</label>
-            <input type="url" id="dudi_foto" class="form-control" placeholder="https://drive.google.com/...">
-          </div>
           <div class="form-group">
             <label for="dudi_kode"><i class="fas fa-key"></i> Kode Akses Pembimbing</label>
             <div style="display:flex;gap:8px;">         
@@ -1034,6 +1030,25 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
         <!-- JURNAL PKL -->
     <section id="page-pkl-jurnal" class="page hidden">
       <h1 class="page-title"><i class="fas fa-book" style="color:var(--primary);"></i> Jurnal Harian PKL</h1>
+
+            <!-- ⭐ PANEL UPLOAD FOTO BENGKEL -->
+      <div class="card" style="background:#f0fdf4; border:1px solid var(--primary-border); margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--primary-dark);"><i class="fas fa-camera"></i> Foto Depan Bengkel</div>
+            <div style="font-size:12px;color:#065f46;margin-top:4px;">Wajib diisi sebelum mencetak laporan PDF.</div>
+          </div>
+          <div>
+            <input type="file" id="file_foto_bengkel" accept="image/*" style="display:none;" onchange="uploadFotoBengkel(this)">
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('file_foto_bengkel').click()">
+              <i class="fas fa-upload"></i> Upload / Ubah Foto
+            </button>
+          </div>
+        </div>
+        <div id="preview-foto-bengkel" style="margin-top:12px; display:none;">
+          <img id="img-preview-bengkel" src="" style="max-height:150px; border-radius:8px; border:2px solid #10b981;">
+        </div>
+      </div>
       
       <!-- ⭐ TAMBAHAN: CETAK LAPORAN BULANAN -->
       <div class="card" style="background:#f8fafc; border:1px solid var(--border); padding:14px 18px; margin-bottom:16px;">
