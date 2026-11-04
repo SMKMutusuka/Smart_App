@@ -732,6 +732,31 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
         </div>
       </div>
 
+            <div class="card" style="background:#f8fafc; border:1px solid var(--border); padding:14px 18px; margin-bottom:14px;">
+        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="form-group" style="flex:1; min-width:120px; margin-bottom:0;">
+            <label><i class="fas fa-calendar-alt"></i> Bulan Laporan PKL</label>
+            <select id="lap_bulan_siswa" class="form-control">
+              <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+              <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+              <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+              <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1; min-width:100px; margin-bottom:0;">
+            <label>Tahun</label>
+            <select id="lap_tahun_siswa" class="form-control">
+              <option value="2026">2026</option><option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <button type="button" class="btn btn-primary" onclick="cetakLaporanPKLSiswa()">
+              <i class="fas fa-file-pdf"></i> Cetak Laporan PKL
+            </button>
+          </div>
+        </div>
+      </div>
+      
       <div class="card">
         <div class="chart-card-title" style="margin-bottom:14px;"><i class="fas fa-list-ul"></i> Riwayat Absensi Saya</div>
         <div class="table-pagination-header">
@@ -930,7 +955,10 @@ var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPd
               <input type="tel" id="dudi_wa" class="form-control" placeholder="62812345678">
             </div>
           </div>
-  
+            <div class="form-group">
+            <label for="dudi_foto"><i class="fas fa-image"></i> Link Foto Depan Bengkel (Opsional)</label>
+            <input type="url" id="dudi_foto" class="form-control" placeholder="https://drive.google.com/...">
+          </div>
           <div class="form-group">
             <label for="dudi_kode"><i class="fas fa-key"></i> Kode Akses Pembimbing</label>
             <div style="display:flex;gap:8px;">         
