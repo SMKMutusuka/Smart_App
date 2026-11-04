@@ -1,7 +1,7 @@
 // =============================================
 // PEMBIMBING DUDI — Frontend
 // File: js-pembimbing.js
-// ⭐ Hanya Menampilkan Tab Absensi & Siswa
+// ⭐ Fix: Token Mismatch & Loading Spinner
 // =============================================
 var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
 var SESSION_DAYS = 7;
@@ -101,12 +101,12 @@ function masukKeDashboardPembimbing(kode, token) {
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
-      hideLoading(); // ⭐ Matikan loading
+      hideLoading();
       pembimbingState.data = data;
       renderPembimbingDashboard(data);
     })
     .withFailureHandler(function(err) {
-      hideLoading(); // ⭐ Matikan loading jika error
+      hideLoading();
       if (err.message && err.message.indexOf('Sesi tidak valid') !== -1) {
         logoutPembimbing();
         Swal.fire({ icon: 'warning', title: 'Sesi Habis', text: 'Silakan login ulang dengan PIN.' });
@@ -164,7 +164,6 @@ function renderPembimbingDashboard(data) {
         '<div class="stat-label">Total Siswa</div><div class="stat-value">' + data.totalSiswa + '</div><i class="fas fa-user-graduate stat-icon"></i></div>' +
     '</div>';
   
-  // HANYA TAB ABSEN & SISWA (Jurnal DIHAPUS)
   html +=
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen"><i class="fas fa-fingerprint"></i> Approval Absen (' + stats.totalAbsenPending + ')</button>' +
@@ -218,7 +217,6 @@ function renderPembimbingAbsen(c) {
     html += '<div class="card" style="padding:14px; border-left:4px solid #e2e8f0;">' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap; align-items:flex-start;">' + 
       
-      // CHECKBOX CENTANG
       '<div style="padding-top:35px;">' +
         '<input type="checkbox" class="chk-absen-pembimbing" data-nis="' + a.NIS + '" data-tanggal="' + a.Tanggal + '" style="width:24px; height:24px; cursor:pointer;" title="Centang untuk menyetujui">' +
       '</div>' +
