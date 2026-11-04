@@ -1214,10 +1214,6 @@ function cetakLaporanPKLSiswa() {
   google.script.run
     .withSuccessHandler(function(res) {
       hideLoading();
-      if (!res) {
-        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Data laporan tidak ditemukan.' });
-        return;
-      }
       
       // Susun Tabel Absen
       var tableAbsenBody = [
@@ -1237,68 +1233,85 @@ function cetakLaporanPKLSiswa() {
       });
       if (res.jurnal.length === 0) tableJurnalBody.push([{ text: 'Tidak ada data jurnal.', colSpan: 4, alignment: 'center' }, '', '', '']);
 
-      // Desain PDF (Gambar langsung pakai Base64 dari Backend)
-      var docDefinition = {
-        pageMargins: [40, 60, 40, 60],
-        content: [
-          // ====== COVER PAGE ======
-          res.logoBase64 ? { image: res.logoBase64, width: 80, alignment: 'center', margin: [0, 0, 0, 10] } : '',
-          { text: 'LAPORAN BULANAN PRAKTIK KERJA LAPANGAN (PKL)', style: 'header' },
-          { text: 'SMK MUHAMMADIYAH 1 SURAKARTA', style: 'subheader' },
-          { text: `Periode: ${namaBulan} ${tahun}`, style: 'subheader', margin: [0, 0, 0, 30] },
-          
-          // Foto Bengkel & Data
-          {
-            columns: [
-              {
-                width: '50%',
-                stack: [
-                  { text: 'DATA SISWA', style: 'sectionHeader' },
-                  { text: 'Nama: ' + res.siswa.Nama },
-                  { text: 'NIS: ' + res.siswa.NIS },
-                  { text: 'Kelas: ' + res.siswa.Kelas },
-                  { text: '\nDATA PERUSAHAAN / DUDI', style: 'sectionHeader', margin: [0, 15, 0, 0] },
-                  { text: 'Nama: ' + res.dudi.Nama },
-                  { text: 'Alamat: ' + res.dudi.Alamat }
-                ]
-              },
-              {
-                width: '50%',
-                stack: [
-                  res.fotoDudiBase64 ? { image: res.fotoDudiBase64, width: 200, alignment: 'right' } : { text: '[Foto Bengkel Belum Diatur]', alignment: 'right', italics: true }
-                ]
-              }
+      // --- DESAIN COVER SESUAI GAMBAR ---
+      var contentCover = [
+        res.logoBase64 ? { image: res.logoBase64, width: 80, alignment: 'center', margin: [0, 20, 0, 20] } : { text: '\n\n' },
+        { text: 'LAPORAN BULANAN PRAKTIK KERJA LAPANGAN (PKL)', fontSize: 14, bold: true, alignment: 'center' },
+        { text: 'SMK MUHAMMADIYAH 1 SURAKARTA', fontSize: 16, bold: true, alignment: 'center', margin: [0, 5, 0, 5] },
+        { text: `Periode: ${namaBulan} ${tahun}`, fontSize: 12, alignment: 'center', margin: [0, 0, 0, 40] },
+        
+        // Data Siswa (Tabel tanpa border)
+        {
+          table: {
+            widths: [100, '*'],
+            body: [
+              ['Nama Siswa', ': ' + res.siswa.Nama],
+              ['NIS', ': ' + res.siswa.NIS],
+              ['Kelas', ': ' + res.siswa.Kelas]
             ]
           },
+          layout: 'noBorders',
+          margin: [40, 0, 0, 20]
+        },
+        
+        // Kotak Foto (Jika belum ada, tampilkan placeholder kotak)
+        res.fotoDudiBase64 
+          ? { image: res.fotoDudiBase64, fit: [400, 250], alignment: 'center', margin: [0, 10, 0, 20] }
+          : { 
+              table: { widths: [400], heights: [200], body: [[{ text: 'Foto dudi yang diupload siswa', alignment: 'center', margin: [0, 90, 0, 0], color: '#3b82f6' }]] },
+              layout: { hLineWidth: function(i, node) { return 1; }, vLineWidth: function(i, node) { return 1; }, hLineColor: '#cbd5e1', vLineColor: '#cbd5e1' },
+              alignment: 'center',
+              margin: [0, 10, 0, 20]
+            },
 
+        // Data DUDI (Tabel tanpa border)
+        { text: 'DATA PERUSAHAAN / DUDI', fontSize: 12, bold: true, alignment: 'center', margin: [0, 10, 0, 10] },
+        {
+          table: {
+            widths: [60, '*'],
+            body: [
+              ['Nama', ': ' + res.dudi.Nama],
+              ['Alamat', ': ' + res.dudi.Alamat]
+            ]
+          },
+          layout: 'noBorders',
+          margin: [40, 0, 0, 0]
+        }
+      ];
+
+      // --- GABUNGKAN SEMUA ---
+      var docDefinition = {
+        pageMargins: [40, 40, 40, 40],
+        content: [
+          // COVER PAGE
+          ...contentCover,
+          
+          // PAGE BREAK
           { text: '', pageBreak: 'after' },
 
-          // ====== ISI LAPORAN ======
+          // ISI LAPORAN
           { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
           { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', 'auto', '*'], body: tableAbsenBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
           
           { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
-          { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
+          { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 30] },
           
-          { text: '\n\nSurakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right' },
+          // Tanda Tangan
+          { text: 'Surakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right', margin: [0, 20, 20, 0] },
           {
             columns: [
               { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
               { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
-            ],
-            margin: [0, 20, 0, 0]
+            ]
           }
         ],
         styles: {
-          header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-          subheader: { fontSize: 14, alignment: 'center' },
-          sectionHeader: { fontSize: 13, bold: true, margin: [0, 10, 0, 5], color: '#10b981' },
+          sectionHeader: { fontSize: 12, bold: true, margin: [0, 10, 0, 5], color: '#000000' },
           tableHeader: { bold: true, fontSize: 10, fillColor: '#ecfdf5' }
         },
-        defaultStyle: { fontSize: 11 }
+        defaultStyle: { fontSize: 10 }
       };
 
-      // Panggil PDFMake
       try {
         pdfMake.createPdf(docDefinition).download('Laporan_PKL_' + res.siswa.NIS + '_' + namaBulan + '_' + tahun + '.pdf');
       } catch (e) {
@@ -1309,5 +1322,45 @@ function cetakLaporanPKLSiswa() {
       hideLoading();
       Swal.fire({ icon: 'error', title: 'Gagal Server', text: err.message });
     })
+    .getLaporanPKLSiswaBulanan(nis, bulan, tahun);
+}
+
+    // ⭐ Upload Foto Bengkel oleh Siswa
+function uploadFotoBengkel(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var cv = document.createElement('canvas');
+      var maxDim = 800; // Resolusi agak besar buat cover PDF
+      var w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+      else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      
+      var base64 = cv.toDataURL('image/jpeg', 0.7);
+      var nis = String(currentUser.student.NIS).trim();
+      
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+          var preview = document.getElementById('img-preview-bengkel');
+          preview.src = res.url;
+          document.getElementById('preview-foto-bengkel').style.display = 'block';
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+        })
+        .simpanFotoBengkelSiswa(nis, base64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
     .getLaporanPKLSiswaBulanan(nis, bulan, tahun);
 }
