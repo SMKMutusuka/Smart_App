@@ -1259,14 +1259,33 @@ function cetakLaporanPKLSiswa() {
       });
       if (res.absen.length === 0) tableAbsenBody.push([{ text: 'Tidak ada data absensi.', colSpan: 5, alignment: 'center' }, '', '', '', '']);
 
-      // Susun Tabel Jurnal
+     // Susun Tabel Jurnal (Ganti Approval DUDI jadi Foto)
       var tableJurnalBody = [
-        [{ text: 'Tanggal', style: 'tableHeader' }, { text: 'Kegiatan', style: 'tableHeader' }, { text: 'Approval DUDI', style: 'tableHeader' }, { text: 'Approval Sekolah', style: 'tableHeader' }]
+        [
+          { text: 'Tanggal', style: 'tableHeader' }, 
+          { text: 'Kegiatan', style: 'tableHeader' }, 
+          { text: 'Foto (5x7 cm)', style: 'tableHeader' }, 
+          { text: 'Approval Sekolah', style: 'tableHeader' }
+        ]
       ];
+      
       res.jurnal.forEach(function(j) {
-        tableJurnalBody.push([j.Tanggal, j.Kegiatan, j.Approval_DUDI, j.Approval_Sekolah]);
+        // Tampilkan gambar jika ada Base64-nya
+        var fotoCell = j.Foto_Base64 
+          ? { image: j.Foto_Base64, width: 198, height: 142, alignment: 'center', margin: [0, 5, 0, 5] } 
+          : { text: '-', alignment: 'center' };
+
+        tableJurnalBody.push([
+          j.Tanggal, 
+          j.Kegiatan, 
+          fotoCell, 
+          j.Approval_Sekolah
+        ]);
       });
-      if (res.jurnal.length === 0) tableJurnalBody.push([{ text: 'Tidak ada data jurnal.', colSpan: 4, alignment: 'center' }, '', '', '']);
+      
+      if (res.jurnal.length === 0) {
+        tableJurnalBody.push([{ text: 'Tidak ada data jurnal.', colSpan: 4, alignment: 'center' }, '', '', '']);
+      }
 
       // --- DESAIN COVER SESUAI GAMBAR ---
       var contentCover = [
