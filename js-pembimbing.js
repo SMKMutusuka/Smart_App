@@ -94,17 +94,28 @@ function masukKeDashboardPembimbing(kode, token) {
   pembimbingState.kodeAkses = kode;
   pembimbingState.token = token;
   
-  // ⭐ SEMBUNYIKAN SEMUA HALAMAN LOGIN
+  // 1. Sembunyikan halaman login
   var loginPage = document.getElementById('login-page');
   var loginDudi = document.getElementById('login-dudi-page');
-  var appLayout = document.getElementById('app-layout');
-  var pagePembimbing = document.getElementById('page-pembimbing');
-  
   if (loginPage) loginPage.classList.add('hidden');
-  if (loginDudi) loginDudi.classList.add('hidden'); // ⭐ INI YANG KETINGGALAN
-  if (appLayout) appLayout.classList.add('hidden');
+  if (loginDudi) loginDudi.classList.add('hidden'); 
   
-  // ⭐ TAMPILKAN DASHBOARD PEMBIMBING
+  // 2. Tampilkan App Layout (Bukan disembunyikan!)
+  var appLayout = document.getElementById('app-layout');
+  if (appLayout) appLayout.classList.remove('hidden'); 
+  
+  // 3. Sembunyikan Sidebar & Tombol Menu (Karena DUDI tidak butuh menu)
+  var sidebar = document.getElementById('sidebar');
+  var menuToggle = document.querySelector('.menu-toggle');
+  var overlay = document.querySelector('.overlay');
+  if (sidebar) sidebar.classList.add('hidden');
+  if (menuToggle) menuToggle.classList.add('hidden');
+  if (overlay) overlay.classList.remove('active');
+  document.body.style.overflow = '';
+  
+  // 4. Sembunyikan semua halaman, tampilkan HANYA halaman pembimbing
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.add('hidden'); });
+  var pagePembimbing = document.getElementById('page-pembimbing');
   if (pagePembimbing) pagePembimbing.classList.remove('hidden');
   
   showLoading();
@@ -129,10 +140,30 @@ function masukKeDashboardPembimbing(kode, token) {
 function logoutPembimbing() {
   localStorage.removeItem(PEMBIMBING_STORAGE_KEY);
   pembimbingState = { kodeAkses: null, token: null, data: null };
-  document.getElementById('page-pembimbing').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
+  
+  // 1. Sembunyikan Dashboard & App Layout
+  var pagePemb = document.getElementById('page-pembimbing');
+  var appLayout = document.getElementById('app-layout');
+  if (pagePemb) pagePemb.classList.add('hidden');
+  if (appLayout) appLayout.classList.add('hidden');
+  
+  // 2. Tampilkan kembali halaman login DUDI
+  var loginDudi = document.getElementById('login-dudi-page');
+  var loginPage = document.getElementById('login-page');
+  if (loginDudi) loginDudi.classList.remove('hidden');
+  if (loginPage) loginPage.classList.add('hidden');
+  
+  // 3. Kembalikan Sidebar & Menu (untuk jaga-jaga jika nanti login admin)
+  var sidebar = document.getElementById('sidebar');
+  var menuToggle = document.querySelector('.menu-toggle');
+  if (sidebar) sidebar.classList.remove('hidden');
+  if (menuToggle) menuToggle.classList.remove('hidden');
+  
   if (window.location.hash) history.replaceState(null, '', window.location.pathname);
-  switchLoginTab('admin');
+  
+  // Reset input PIN
+  var inpPin = document.getElementById('pemb_pin');
+  if (inpPin) inpPin.value = '';
 }
 
 function renderPembimbingError(msg) {
