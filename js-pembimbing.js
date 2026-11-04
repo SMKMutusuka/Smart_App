@@ -1,6 +1,7 @@
 // =============================================
 // PEMBIMBING DUDI — Frontend
 // File: js-pembimbing.js
+// ⭐ Hanya Menampilkan Tab Absensi & Siswa
 // =============================================
 var PEMBIMBING_STORAGE_KEY = 'mutusuka_pembimbing';
 var SESSION_DAYS = 7;
@@ -33,16 +34,14 @@ function handleLoginPembimbing(e) {
   if (e) e.preventDefault();
   var kode = document.getElementById('pemb_kode').value.trim().toUpperCase();
   var pin = document.getElementById('pemb_pin').value.trim();
-  
   if (!kode || !pin) {
     Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Kode akses & PIN wajib diisi.' });
     return;
   }
-  
   showLoading();
   google.script.run
     .withSuccessHandler(function(res) {
-      hideLoading(); // ⭐ Pastikan ini ada
+      hideLoading();
       if (!res || !res.success) {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Response tidak valid' });
         return;
@@ -52,7 +51,7 @@ function handleLoginPembimbing(e) {
       masukKeDashboardPembimbing(res.dudi.Kode_Akses, res.token);
     })
     .withFailureHandler(function(err) {
-      hideLoading(); // ⭐ Pastikan ini ada
+      hideLoading();
       Swal.fire({ icon: 'error', title: 'Login Gagal', text: err.message });
     })
     .loginPembimbing(kode, pin);
@@ -159,18 +158,16 @@ function renderPembimbingDashboard(data) {
     '<div class="stat-grid" style="margin-bottom:18px;">' +
       '<div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);">' +
         '<div class="stat-label">Absen Menunggu</div><div class="stat-value">' + stats.totalAbsenPending + '</div><i class="fas fa-clock stat-icon"></i></div>' +
-      '<div class="stat-card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">' +
-        '<div class="stat-label">Jurnal Menunggu</div><div class="stat-value">' + stats.totalJurnalPending + '</div><i class="fas fa-book stat-icon"></i></div>' +
       '<div class="stat-card bg-hadir">' +
         '<div class="stat-label">Approved Hari Ini</div><div class="stat-value">' + stats.absenApprovedHariIni + '</div><i class="fas fa-check-circle stat-icon"></i></div>' +
       '<div class="stat-card" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">' +
         '<div class="stat-label">Total Siswa</div><div class="stat-value">' + data.totalSiswa + '</div><i class="fas fa-user-graduate stat-icon"></i></div>' +
     '</div>';
   
+  // HANYA TAB ABSEN & SISWA (Jurnal DIHAPUS)
   html +=
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="showPembimbingTab(\'absen\')" id="tab-pemb-absen"><i class="fas fa-fingerprint"></i> Approval Absen (' + stats.totalAbsenPending + ')</button>' +
-      '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'jurnal\')" id="tab-pemb-jurnal"><i class="fas fa-book"></i> Approval Jurnal (' + stats.totalJurnalPending + ')</button>' +
       '<button type="button" class="btn btn-outline btn-sm" onclick="showPembimbingTab(\'siswa\')" id="tab-pemb-siswa"><i class="fas fa-users"></i> Daftar Siswa</button>' +
       '<button type="button" class="btn btn-danger btn-sm" onclick="logoutPembimbing()" style="margin-left:auto;"><i class="fas fa-sign-out-alt"></i> Keluar</button>' +
     '</div>';
@@ -181,18 +178,16 @@ function renderPembimbingDashboard(data) {
 }
 
 function showPembimbingTab(tab) {
-  ['absen','jurnal','siswa'].forEach(function(t) {
+  ['absen','siswa'].forEach(function(t) {
     var btn = document.getElementById('tab-pemb-' + t);
     if (btn) btn.className = (t === tab) ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
   });
   var c = document.getElementById('pembimbing-tab-content');
   if (!c) return;
   if (tab === 'absen') renderPembimbingAbsen(c);
-  else if (tab === 'jurnal') renderPembimbingJurnal(c);
   else if (tab === 'siswa') renderPembimbingSiswa(c);
 }
 
-// ⭐ RENDER ABSEN DENGAN CHECKBOX
 function renderPembimbingAbsen(c) {
   var list = pembimbingState.data.absenPending || [];
   
@@ -223,7 +218,7 @@ function renderPembimbingAbsen(c) {
     html += '<div class="card" style="padding:14px; border-left:4px solid #e2e8f0;">' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap; align-items:flex-start;">' + 
       
-      // ⭐ CHECKBOX
+      // CHECKBOX CENTANG
       '<div style="padding-top:35px;">' +
         '<input type="checkbox" class="chk-absen-pembimbing" data-nis="' + a.NIS + '" data-tanggal="' + a.Tanggal + '" style="width:24px; height:24px; cursor:pointer;" title="Centang untuk menyetujui">' +
       '</div>' +
@@ -248,7 +243,6 @@ function renderPembimbingAbsen(c) {
   c.innerHTML = html;
 }
 
-// ⭐ PROSES YANG DICENTANG
 function prosesBulkApproveTerpilih() {
   var checkboxes = document.querySelectorAll('.chk-absen-pembimbing:checked');
   
@@ -291,35 +285,6 @@ function prosesBulkApproveTerpilih() {
   });
 }
 
-function renderPembimbingJurnal(c) {
-  var list = pembimbingState.data.jurnalPending || [];
-  if (list.length === 0) {
-    c.innerHTML = '<div class="card" style="text-align:center;padding:32px;">' +
-      '<i class="fas fa-check-double" style="font-size:3em;color:var(--primary);"></i>' +
-      '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Tidak Ada Jurnal Menunggu</h3></div>';
-    return;
-  }
-  var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  list.forEach(function(j) {
-    var fotoHtml = j.Foto_Url ? '<a href="' + escapeHtml(j.Foto_Url) + '" target="_blank"><img src="' + escapeHtml(j.Foto_Url) + '" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;"></a>' : '';
-    html += '<div class="card" style="padding:14px;">' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' + fotoHtml +
-      '<div style="flex:1;min-width:250px;">' +
-        '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">' +
-          '<strong style="font-size:14px;">' + escapeHtml(j.Nama_Siswa || '-') + '</strong>' +
-          '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(j.Tanggal) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12.5px;color:#475569;line-height:1.5;margin-top:8px;">' + escapeHtml(j.Kegiatan).replace(/\n/g, '<br>') + '</div>' +
-      '</div></div>' +
-      '<div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
-        '<button class="btn btn-primary btn-sm" onclick="konfirmApproveJurnalDUDI(\'' + j.ID_Jurnal + '\')"><i class="fas fa-check"></i> Setujui</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="konfirmRejectJurnalDUDI(\'' + j.ID_Jurnal + '\')"><i class="fas fa-times"></i> Tolak</button>' +
-      '</div></div>';
-  });
-  html += '</div>';
-  c.innerHTML = html;
-}
-
 function renderPembimbingSiswa(c) {
   var list = pembimbingState.data.siswa || [];
   if (list.length === 0) { c.innerHTML = '<div class="card" style="text-align:center;padding:32px;color:var(--text-muted);">Belum ada siswa</div>'; return; }
@@ -329,19 +294,6 @@ function renderPembimbingSiswa(c) {
   });
   html += '</tbody></table></div></div>';
   c.innerHTML = html;
-}
-
-function konfirmApproveAbsen(nis, tanggal) {
-  Swal.fire({ title: 'Setujui Absen?', html: 'Absen <strong>' + escapeHtml(nis) + '</strong> (' + escapeHtml(tanggal) + ')?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Setujui', cancelButtonText: 'Batal', confirmButtonColor: '#10b981' })
-    .then(function(r) { if (!r.isConfirmed) return;
-      showLoading();
-      google.script.run.withSuccessHandler(function(res) {
-        hideLoading();
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-        masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-      }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-        .approveAbsenPembimbingSecure(pembimbingState.kodeAkses, pembimbingState.token, nis, tanggal);
-    });
 }
 
 function konfirmRejectAbsen(nis, tanggal) {
@@ -355,32 +307,5 @@ function konfirmRejectAbsen(nis, tanggal) {
       masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
     }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
       .rejectAbsenPembimbingSecure(pembimbingState.kodeAkses, pembimbingState.token, nis, tanggal, r.value);
-  });
-}
-
-function konfirmApproveJurnalDUDI(idJurnal) {
-  Swal.fire({ title: 'Setujui Jurnal?', input: 'textarea', inputLabel: 'Catatan (opsional)', showCancelButton: true, confirmButtonText: 'Setujui', cancelButtonText: 'Batal', confirmButtonColor: '#10b981' })
-    .then(function(r) { if (!r.isConfirmed) return;
-      showLoading();
-      google.script.run.withSuccessHandler(function(res) {
-        hideLoading();
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-        masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-      }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-        .approveJurnalDUDISecure(pembimbingState.kodeAkses, pembimbingState.token, idJurnal, r.value || '');
-    });
-}
-
-function konfirmRejectJurnalDUDI(idJurnal) {
-  Swal.fire({ title: 'Tolak Jurnal?', input: 'textarea', inputLabel: 'Alasan', showCancelButton: true, confirmButtonText: 'Tolak', cancelButtonText: 'Batal', confirmButtonColor: '#ef4444',
-    inputValidator: function(v) { if (!v || v.length < 5) return 'Alasan minimal 5 karakter.'; }
-  }).then(function(r) { if (!r.isConfirmed) return;
-    showLoading();
-    google.script.run.withSuccessHandler(function(res) {
-      hideLoading();
-      Swal.fire({ icon: 'success', title: 'Ditolak', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-      masukKeDashboardPembimbing(pembimbingState.kodeAkses, pembimbingState.token);
-    }).withFailureHandler(function(err) { hideLoading(); Swal.fire({ icon: 'error', title: 'Gagal', text: err.message }); })
-      .rejectJurnalDUDISecure(pembimbingState.kodeAkses, pembimbingState.token, idJurnal, r.value);
   });
 }
