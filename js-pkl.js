@@ -1219,117 +1219,95 @@ function cetakLaporanPKLSiswa() {
         return;
       }
       
-      // Ambil gambar Logo & Foto Bengkel (Convert ke Base64)
-      var getBase64ImageFromUrl = function(imageUrl) {
-        return fetch(imageUrl)
-          .then(resp => resp.blob())
-          .then(blob => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          })).catch(() => null);
+      // Susun Tabel Absen
+      var tableAbsenBody = [
+        [{ text: 'Tanggal', style: 'tableHeader' }, { text: 'Masuk', style: 'tableHeader' }, { text: 'Pulang', style: 'tableHeader' }, { text: 'Status', style: 'tableHeader' }, { text: 'Ket', style: 'tableHeader' }]
+      ];
+      res.absen.forEach(function(a) {
+        tableAbsenBody.push([a.Tanggal, a.Jam_Masuk || '-', a.Jam_Pulang || '-', a.Status, a.Keterangan || '-']);
+      });
+      if (res.absen.length === 0) tableAbsenBody.push([{ text: 'Tidak ada data absensi.', colSpan: 5, alignment: 'center' }, '', '', '', '']);
+
+      // Susun Tabel Jurnal
+      var tableJurnalBody = [
+        [{ text: 'Tanggal', style: 'tableHeader' }, { text: 'Kegiatan', style: 'tableHeader' }, { text: 'Approval DUDI', style: 'tableHeader' }, { text: 'Approval Sekolah', style: 'tableHeader' }]
+      ];
+      res.jurnal.forEach(function(j) {
+        tableJurnalBody.push([j.Tanggal, j.Kegiatan, j.Approval_DUDI, j.Approval_Sekolah]);
+      });
+      if (res.jurnal.length === 0) tableJurnalBody.push([{ text: 'Tidak ada data jurnal.', colSpan: 4, alignment: 'center' }, '', '', '']);
+
+      // Desain PDF (Gambar langsung pakai Base64 dari Backend)
+      var docDefinition = {
+        pageMargins: [40, 60, 40, 60],
+        content: [
+          // ====== COVER PAGE ======
+          res.logoBase64 ? { image: res.logoBase64, width: 80, alignment: 'center', margin: [0, 0, 0, 10] } : '',
+          { text: 'LAPORAN BULANAN PRAKTIK KERJA LAPANGAN (PKL)', style: 'header' },
+          { text: 'SMK MUHAMMADIYAH 1 SURAKARTA', style: 'subheader' },
+          { text: `Periode: ${namaBulan} ${tahun}`, style: 'subheader', margin: [0, 0, 0, 30] },
+          
+          // Foto Bengkel & Data
+          {
+            columns: [
+              {
+                width: '50%',
+                stack: [
+                  { text: 'DATA SISWA', style: 'sectionHeader' },
+                  { text: 'Nama: ' + res.siswa.Nama },
+                  { text: 'NIS: ' + res.siswa.NIS },
+                  { text: 'Kelas: ' + res.siswa.Kelas },
+                  { text: '\nDATA PERUSAHAAN / DUDI', style: 'sectionHeader', margin: [0, 15, 0, 0] },
+                  { text: 'Nama: ' + res.dudi.Nama },
+                  { text: 'Alamat: ' + res.dudi.Alamat }
+                ]
+              },
+              {
+                width: '50%',
+                stack: [
+                  res.fotoDudiBase64 ? { image: res.fotoDudiBase64, width: 200, alignment: 'right' } : { text: '[Foto Bengkel Belum Diatur]', alignment: 'right', italics: true }
+                ]
+              }
+            ]
+          },
+
+          { text: '', pageBreak: 'after' },
+
+          // ====== ISI LAPORAN ======
+          { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
+          { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', 'auto', '*'], body: tableAbsenBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
+          
+          { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
+          { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
+          
+          { text: '\n\nSurakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right' },
+          {
+            columns: [
+              { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
+              { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
+            ],
+            margin: [0, 20, 0, 0]
+          }
+        ],
+        styles: {
+          header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
+          subheader: { fontSize: 14, alignment: 'center' },
+          sectionHeader: { fontSize: 13, bold: true, margin: [0, 10, 0, 5], color: '#10b981' },
+          tableHeader: { bold: true, fontSize: 10, fillColor: '#ecfdf5' }
+        },
+        defaultStyle: { fontSize: 11 }
       };
 
-      var logoUrl = 'https://lh3.googleusercontent.com/d/1e-_r4-cs_YZwTDIZ9SUhpQsRrxlw2dAs';
-      var fotoBengkelUrl = res.dudi.Foto_Url || '';
-      
-      Promise.all([
-        getBase64ImageFromUrl(logoUrl),
-        fotoBengkelUrl ? getBase64ImageFromUrl(fotoBengkelUrl) : Promise.resolve(null)
-      ]).then(function(images) {
-        var logoBase64 = images[0];
-        var fotoBase64 = images[1];
-        
-        // Susun Tabel Absen
-        var tableAbsenBody = [
-          [{ text: 'Tanggal', style: 'tableHeader' }, { text: 'Masuk', style: 'tableHeader' }, { text: 'Pulang', style: 'tableHeader' }, { text: 'Status', style: 'tableHeader' }, { text: 'Ket', style: 'tableHeader' }]
-        ];
-        res.absen.forEach(function(a) {
-          tableAbsenBody.push([a.Tanggal, a.Jam_Masuk || '-', a.Jam_Pulang || '-', a.Status, a.Keterangan || '-']);
-        });
-        if (res.absen.length === 0) tableAbsenBody.push([{ text: 'Tidak ada data absensi.', colSpan: 5, alignment: 'center' }, '', '', '', '']);
-
-        // Susun Tabel Jurnal
-        var tableJurnalBody = [
-          [{ text: 'Tanggal', style: 'tableHeader' }, { text: 'Kegiatan', style: 'tableHeader' }, { text: 'Approval DUDI', style: 'tableHeader' }, { text: 'Approval Sekolah', style: 'tableHeader' }]
-        ];
-        res.jurnal.forEach(function(j) {
-          tableJurnalBody.push([j.Tanggal, j.Kegiatan, j.Approval_DUDI, j.Approval_Sekolah]);
-        });
-        if (res.jurnal.length === 0) tableJurnalBody.push([{ text: 'Tidak ada data jurnal.', colSpan: 4, alignment: 'center' }, '', '', '']);
-
-        // Desain PDF
-        var docDefinition = {
-          pageMargins: [40, 60, 40, 60],
-          content: [
-            // ====== COVER PAGE ======
-            { image: logoBase64 || 'logo', width: 80, alignment: 'center', margin: [0, 0, 0, 10] },
-            { text: 'LAPORAN BULANAN PRAKTIK KERJA LAPANGAN (PKL)', style: 'header' },
-            { text: 'SMK MUHAMMADIYAH 1 SURAKARTA', style: 'subheader' },
-            { text: `Periode: ${namaBulan} ${tahun}`, style: 'subheader', margin: [0, 0, 0, 30] },
-            
-            // Foto Bengkel & Data
-            {
-              columns: [
-                {
-                  width: '50%',
-                  stack: [
-                    { text: 'DATA SISWA', style: 'sectionHeader' },
-                    { text: 'Nama: ' + res.siswa.Nama },
-                    { text: 'NIS: ' + res.siswa.NIS },
-                    { text: 'Kelas: ' + res.siswa.Kelas },
-                    { text: '\nDATA PERUSAHAAN / DUDI', style: 'sectionHeader', margin: [0, 15, 0, 0] },
-                    { text: 'Nama: ' + res.dudi.Nama },
-                    { text: 'Alamat: ' + res.dudi.Alamat }
-                  ]
-                },
-                {
-                  width: '50%',
-                  stack: [
-                    fotoBase64 ? { image: fotoBase64, width: 200, alignment: 'right' } : { text: '[Foto Bengkel Belum Diatur]', alignment: 'right', italics: true }
-                  ]
-                }
-              ]
-            },
-
-            { text: '', pageBreak: 'after' },
-
-            // ====== ISI LAPORAN ======
-            { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
-            { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', 'auto', '*'], body: tableAbsenBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
-            
-            { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
-            { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
-            
-            { text: '\n\nSurakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right' },
-            {
-              columns: [
-                { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
-                { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
-              ],
-              margin: [0, 20, 0, 0]
-            }
-          ],
-          styles: {
-            header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-            subheader: { fontSize: 14, alignment: 'center' },
-            sectionHeader: { fontSize: 13, bold: true, margin: [0, 10, 0, 5], color: '#10b981' },
-            tableHeader: { bold: true, fontSize: 10, fillColor: '#ecfdf5' }
-          },
-          defaultStyle: { fontSize: 11 }
-        };
-
-        try {
-          pdfMake.createPdf(docDefinition).download('Laporan_PKL_' + res.siswa.NIS + '_' + namaBulan + '_' + tahun + '.pdf');
-        } catch (e) {
-          Swal.fire({ icon: 'error', title: 'Gagal Membuat PDF', text: e.message });
-        }
-      });
+      // Panggil PDFMake
+      try {
+        pdfMake.createPdf(docDefinition).download('Laporan_PKL_' + res.siswa.NIS + '_' + namaBulan + '_' + tahun + '.pdf');
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal PDF', text: e.message });
+      }
     })
     .withFailureHandler(function(err) {
       hideLoading();
-      Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+      Swal.fire({ icon: 'error', title: 'Gagal Server', text: err.message });
     })
     .getLaporanPKLSiswaBulanan(nis, bulan, tahun);
 }
