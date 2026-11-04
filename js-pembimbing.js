@@ -94,9 +94,18 @@ function masukKeDashboardPembimbing(kode, token) {
   pembimbingState.kodeAkses = kode;
   pembimbingState.token = token;
   
-  document.getElementById('login-page').classList.add('hidden');
-  document.getElementById('app-layout').classList.add('hidden');
-  document.getElementById('page-pembimbing').classList.remove('hidden');
+  // ⭐ SEMBUNYIKAN SEMUA HALAMAN LOGIN
+  var loginPage = document.getElementById('login-page');
+  var loginDudi = document.getElementById('login-dudi-page');
+  var appLayout = document.getElementById('app-layout');
+  var pagePembimbing = document.getElementById('page-pembimbing');
+  
+  if (loginPage) loginPage.classList.add('hidden');
+  if (loginDudi) loginDudi.classList.add('hidden'); // ⭐ INI YANG KETINGGALAN
+  if (appLayout) appLayout.classList.add('hidden');
+  
+  // ⭐ TAMPILKAN DASHBOARD PEMBIMBING
+  if (pagePembimbing) pagePembimbing.classList.remove('hidden');
   
   showLoading();
   google.script.run
