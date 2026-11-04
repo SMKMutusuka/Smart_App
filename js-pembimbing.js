@@ -101,12 +101,12 @@ function masukKeDashboardPembimbing(kode, token) {
   showLoading();
   google.script.run
     .withSuccessHandler(function(data) {
-      hideLoading();
+      hideLoading(); // ⭐ Matikan loading
       pembimbingState.data = data;
       renderPembimbingDashboard(data);
     })
     .withFailureHandler(function(err) {
-      hideLoading();
+      hideLoading(); // ⭐ Matikan loading jika error
       if (err.message && err.message.indexOf('Sesi tidak valid') !== -1) {
         logoutPembimbing();
         Swal.fire({ icon: 'warning', title: 'Sesi Habis', text: 'Silakan login ulang dengan PIN.' });
