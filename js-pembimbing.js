@@ -33,14 +33,16 @@ function handleLoginPembimbing(e) {
   if (e) e.preventDefault();
   var kode = document.getElementById('pemb_kode').value.trim().toUpperCase();
   var pin = document.getElementById('pemb_pin').value.trim();
+  
   if (!kode || !pin) {
     Swal.fire({ icon: 'warning', title: 'Lengkapi Data', text: 'Kode akses & PIN wajib diisi.' });
     return;
   }
+  
   showLoading();
   google.script.run
     .withSuccessHandler(function(res) {
-      hideLoading();
+      hideLoading(); // ⭐ Pastikan ini ada
       if (!res || !res.success) {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Response tidak valid' });
         return;
@@ -50,7 +52,7 @@ function handleLoginPembimbing(e) {
       masukKeDashboardPembimbing(res.dudi.Kode_Akses, res.token);
     })
     .withFailureHandler(function(err) {
-      hideLoading();
+      hideLoading(); // ⭐ Pastikan ini ada
       Swal.fire({ icon: 'error', title: 'Login Gagal', text: err.message });
     })
     .loginPembimbing(kode, pin);
