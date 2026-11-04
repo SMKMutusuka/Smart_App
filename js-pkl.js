@@ -1,9 +1,7 @@
 // =============================================
 // MODUL PKL — Frontend FINAL
 // File: js-pkl.js
-// Versi: v2026-09-23-clean2
-// ⭐ Fix: Assign PKL pakai fungsi backend yang sudah ada
-// ⭐ Pakai bukaWhatsApp() untuk WA Desktop
+// Versi: v2026-11-05-Fixed
 // =============================================
 
 // ═══════════ STATE ═══════════
@@ -80,7 +78,7 @@ function simpanDUDI(e) {
     Longitude: parseFloat(document.getElementById('dudi_lng').value),
     Radius_Meter: parseInt(document.getElementById('dudi_radius').value, 10),
     Kode_Akses: document.getElementById('dudi_kode').value.trim(),
-    PIN_Pembimbing: document.getElementById('dudi_pin').value.trim(), // ⭐ Tambahan PIN
+    PIN_Pembimbing: document.getElementById('dudi_pin').value.trim(),
     Nama_Pembimbing: document.getElementById('dudi_pembimbing').value.trim(),
     WA_Pembimbing: document.getElementById('dudi_wa').value.trim()
   };
@@ -116,7 +114,7 @@ function editDUDI(idDudi) {
   document.getElementById('dudi_lng').value = d.Longitude || '';
   document.getElementById('dudi_radius').value = d.Radius_Meter || 20;
   document.getElementById('dudi_kode').value = d.Kode_Akses || '';
-  document.getElementById('dudi_pin').value = d.PIN_Pembimbing || ''; // ⭐ Tambahan PIN
+  document.getElementById('dudi_pin').value = d.PIN_Pembimbing || '';
   document.getElementById('dudi_pembimbing').value = d.Nama_Pembimbing || '';
   document.getElementById('dudi_wa').value = d.WA_Pembimbing || '';
 
@@ -234,11 +232,9 @@ function kirimLinkPembimbingWA(idDudi) {
     "Simpan pesan ini. Terima kasih.\n" +
     "- SMK Muhammadiyah 1 Surakarta";
 
-  // ⭐ Pakai helper terpusat — otomatis coba WA Desktop di PC
   if (typeof bukaWhatsApp === 'function') {
     bukaWhatsApp(d.WA_Pembimbing, pesan, d.Nama_Pembimbing);
   } else {
-    // Fallback kalau helper belum ada
     var nomor = (typeof formatWaNumber === 'function') ? formatWaNumber(d.WA_Pembimbing) : null;
     if (!nomor) {
       Swal.fire({ icon: 'error', title: 'Nomor Tidak Valid', text: 'Nomor WA minimal 10 digit.' });
@@ -1201,7 +1197,46 @@ function renderPKLJurnalRiwayat(list) {
   html += '</div>';
   cont.innerHTML = html;
 }
-// ⭐ CETAK LAPORAN BULANAN SISWA (PDF)
+
+// ⭐ Upload Foto Bengkel oleh Siswa
+function uploadFotoBengkel(input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var cv = document.createElement('canvas');
+      var maxDim = 800; // Resolusi agak besar buat cover PDF
+      var w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+      else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      
+      var base64 = cv.toDataURL('image/jpeg', 0.7);
+      var nis = String(currentUser.student.NIS).trim();
+      
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+          var preview = document.getElementById('img-preview-bengkel');
+          preview.src = res.url;
+          document.getElementById('preview-foto-bengkel').style.display = 'block';
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+        })
+        .simpanFotoBengkelSiswa(nis, base64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ⭐ CETAK LAPORAN BULANAN SISWA (PDF) - FIXED VERSION
 function cetakLaporanPKLSiswa() {
   if (!currentUser || !currentUser.student) return;
   var nis = String(currentUser.student.NIS).trim();
@@ -1238,7 +1273,7 @@ function cetakLaporanPKLSiswa() {
         res.logoBase64 ? { image: res.logoBase64, width: 80, alignment: 'center', margin: [0, 20, 0, 20] } : { text: '\n\n' },
         { text: 'LAPORAN BULANAN PRAKTIK KERJA LAPANGAN (PKL)', fontSize: 14, bold: true, alignment: 'center' },
         { text: 'SMK MUHAMMADIYAH 1 SURAKARTA', fontSize: 16, bold: true, alignment: 'center', margin: [0, 5, 0, 5] },
-        { text: `Periode: ${namaBulan} ${tahun}`, fontSize: 12, alignment: 'center', margin: [0, 0, 0, 40] },
+        { text: 'Periode: ' + namaBulan + ' ' + tahun, fontSize: 12, alignment: 'center', margin: [0, 0, 0, 40] },
         
         // Data Siswa (Tabel tanpa border)
         {
@@ -1279,32 +1314,29 @@ function cetakLaporanPKLSiswa() {
         }
       ];
 
-      // --- GABUNGKAN SEMUA ---
+      // --- ISI HALAMAN 2 ---
+      var halamanIsi = [
+        { text: '', pageBreak: 'after' },
+        { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
+        { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', 'auto', '*'], body: tableAbsenBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
+        
+        { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
+        { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 30] },
+        
+        // Tanda Tangan
+        { text: 'Surakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right', margin: [0, 20, 20, 0] },
+        {
+          columns: [
+            { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
+            { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
+          ]
+        }
+      ];
+
+      // --- GABUNGKAN SEMUA (TANPA SPREAD OPERATOR) ---
       var docDefinition = {
         pageMargins: [40, 40, 40, 40],
-        content: [
-          // COVER PAGE
-          ...contentCover,
-          
-          // PAGE BREAK
-          { text: '', pageBreak: 'after' },
-
-          // ISI LAPORAN
-          { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
-          { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', 'auto', '*'], body: tableAbsenBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 20] },
-          
-          { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
-          { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 30] },
-          
-          // Tanda Tangan
-          { text: 'Surakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right', margin: [0, 20, 20, 0] },
-          {
-            columns: [
-              { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
-              { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
-            ]
-          }
-        ],
+        content: contentCover.concat(halamanIsi),
         styles: {
           sectionHeader: { fontSize: 12, bold: true, margin: [0, 10, 0, 5], color: '#000000' },
           tableHeader: { bold: true, fontSize: 10, fillColor: '#ecfdf5' }
@@ -1322,45 +1354,5 @@ function cetakLaporanPKLSiswa() {
       hideLoading();
       Swal.fire({ icon: 'error', title: 'Gagal Server', text: err.message });
     })
-    .getLaporanPKLSiswaBulanan(nis, bulan, tahun);
-}
-
-    // ⭐ Upload Foto Bengkel oleh Siswa
-function uploadFotoBengkel(input) {
-  if (!input.files || !input.files[0]) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var img = new Image();
-    img.onload = function() {
-      var cv = document.createElement('canvas');
-      var maxDim = 800; // Resolusi agak besar buat cover PDF
-      var w = img.width, h = img.height;
-      if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
-      else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
-      cv.width = w; cv.height = h;
-      cv.getContext('2d').drawImage(img, 0, 0, w, h);
-      
-      var base64 = cv.toDataURL('image/jpeg', 0.7);
-      var nis = String(currentUser.student.NIS).trim();
-      
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function(res) {
-          hideLoading();
-          Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-          var preview = document.getElementById('img-preview-bengkel');
-          preview.src = res.url;
-          document.getElementById('preview-foto-bengkel').style.display = 'block';
-        })
-        .withFailureHandler(function(err) {
-          hideLoading();
-          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
-        })
-        .simpanFotoBengkelSiswa(nis, base64);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(input.files[0]);
-}
     .getLaporanPKLSiswaBulanan(nis, bulan, tahun);
 }
