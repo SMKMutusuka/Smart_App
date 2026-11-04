@@ -53,7 +53,12 @@ function renderDUDITable() {
       '<td>' + (escapeHtml(d.Nama_Pembimbing) || '-') + '</td>' +
       '<td style="font-size:10.5px;font-family:monospace;">' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</td>' +
       '<td>' + (d.Radius_Meter || 20) + 'm</td>' +
-      '<td><span class="chart-badge" style="cursor:pointer;" onclick="copyKode(\'' + escapeHtml(d.Kode_Akses) + '\')">' + escapeHtml(d.Kode_Akses) + ' <i class="fas fa-copy"></i></span></td>' +
+      '<td>' +
+        '<div style="display:flex;flex-direction:column;gap:4px;">' +
+          '<span class="chart-badge" style="cursor:pointer;" onclick="copyKode(\'' + escapeHtml(d.Kode_Akses) + '\')"><i class="fas fa-key"></i> ' + escapeHtml(d.Kode_Akses) + '</span>' +
+          '<span class="chart-badge" style="background:#f1f5f9;color:#475569;cursor:pointer;" onclick="copyKode(\'' + escapeHtml(d.PIN_Pembimbing || '') + '\')"><i class="fas fa-lock"></i> ' + escapeHtml(d.PIN_Pembimbing || '-') + '</span>' +
+        '</div>' +
+      '</td>' +
       '<td><button class="btn btn-outline btn-sm" onclick="copyLinkPembimbing(\'' + escapeHtml(d.Kode_Akses) + '\')"><i class="fas fa-link"></i> Copy Link</button></td>' +
       '<td>' +
         (d.WA_Pembimbing ? '<button class="btn btn-wa btn-sm" onclick="kirimLinkPembimbingWA(\'' + d.ID_DUDI + '\')" title="Kirim Link via WA"><i class="fab fa-whatsapp"></i></button> ' : '') +
@@ -75,6 +80,7 @@ function simpanDUDI(e) {
     Longitude: parseFloat(document.getElementById('dudi_lng').value),
     Radius_Meter: parseInt(document.getElementById('dudi_radius').value, 10),
     Kode_Akses: document.getElementById('dudi_kode').value.trim(),
+    PIN_Pembimbing: document.getElementById('dudi_pin').value.trim(), // ⭐ Tambahan PIN
     Nama_Pembimbing: document.getElementById('dudi_pembimbing').value.trim(),
     WA_Pembimbing: document.getElementById('dudi_wa').value.trim()
   };
@@ -110,6 +116,7 @@ function editDUDI(idDudi) {
   document.getElementById('dudi_lng').value = d.Longitude || '';
   document.getElementById('dudi_radius').value = d.Radius_Meter || 20;
   document.getElementById('dudi_kode').value = d.Kode_Akses || '';
+  document.getElementById('dudi_pin').value = d.PIN_Pembimbing || ''; // ⭐ Tambahan PIN
   document.getElementById('dudi_pembimbing').value = d.Nama_Pembimbing || '';
   document.getElementById('dudi_wa').value = d.WA_Pembimbing || '';
 
@@ -144,7 +151,7 @@ function hapusDUDI(idDudi) {
 }
 
 function resetFormDUDI() {
-  ['dudi_id', 'dudi_nama', 'dudi_alamat', 'dudi_lat', 'dudi_lng', 'dudi_kode', 'dudi_pembimbing', 'dudi_wa'].forEach(function(id) {
+  ['dudi_id', 'dudi_nama', 'dudi_alamat', 'dudi_lat', 'dudi_lng', 'dudi_kode', 'dudi_pin', 'dudi_pembimbing', 'dudi_wa'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
