@@ -1314,7 +1314,7 @@ function cetakLaporanPKLSiswa() {
         }
       ];
 
-      // --- ISI HALAMAN 2 ---
+            // --- ISI HALAMAN 2 ---
       var halamanIsi = [
         { text: '', pageBreak: 'after' },
         { text: 'REKAP ABSENSI HARIAN', style: 'sectionHeader' },
@@ -1323,12 +1323,20 @@ function cetakLaporanPKLSiswa() {
         { text: 'REKAP JURNAL KEGIATAN', style: 'sectionHeader' },
         { table: { headerRows: 1, widths: ['auto', '*', 'auto', 'auto'], body: tableJurnalBody }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 30] },
         
-        // Tanda Tangan
-        { text: 'Surakarta, ' + new Date().toLocaleDateString('id-ID'), alignment: 'right', margin: [0, 20, 20, 0] },
+        // ⭐ TANDA TANGAN DIPERBAIKI
+        { text: 'Surakarta, ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), alignment: 'right', margin: [0, 20, 20, 20] },
+        
         {
           columns: [
-            { width: '50%', text: 'Mengetahui,\nPembimbing DUDI\n\n\n\n(_________________)', alignment: 'center' },
-            { width: '50%', text: 'Siswa PKL\n\n\n\n\n(' + res.siswa.Nama + ')', alignment: 'center' }
+            { width: '50%', stack: [ 'Pembimbing DUDI', '\n\n\n', '( ' + res.dudi.Nama_Pembimbing + ' )' ], alignment: 'center' },
+            { width: '50%', stack: [ 'Siswa PKL', '\n\n\n', '( ' + res.siswa.Nama + ' )' ], alignment: 'center' }
+          ]
+        },
+        { text: 'Mengetahui,', alignment: 'center', margin: [0, 20, 0, 10] },
+        {
+          columns: [
+            { width: '50%', stack: [ 'Pembimbing Sekolah', '\n\n\n', '( ' + res.siswa.Nama_Pembimbing_Sekolah + ' )', 'NBM. ' + (res.siswa.NBM_Pembimbing_Sekolah || '-') ], alignment: 'center' },
+            { width: '50%', stack: [ 'Pokja PKL', '\n\n\n', '( ' + res.pokja.Nama + ' )', 'NBM. ' + (res.pokja.NBM || '-') ], alignment: 'center' }
           ]
         }
       ];
