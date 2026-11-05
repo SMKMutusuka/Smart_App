@@ -1308,7 +1308,7 @@ function collectFormParams(fitur) {
     };
   }
 
-  if (fitur === 'kokurikuler') {
+    if (fitur === 'kokurikuler') {
     var dimensiCheckedKK = [];
     document.querySelectorAll('#ai-panel-kokurikuler input[name="kk_dimensi"]:checked').forEach(function(el) {
       dimensiCheckedKK.push(el.value);
@@ -1321,10 +1321,16 @@ function collectFormParams(fitur) {
 
     var integrasiMapel = [];
     var mapelTP = {};
+    
+    // Ambil mapel yang dicentang
     document.querySelectorAll('#ai-panel-kokurikuler input[name="kk_mapel"]:checked').forEach(function(el) {
       var mapelName = el.value;
+      var safeMapel = mapelName.replace(/[^a-zA-Z0-9]/g, '_');
+      
       integrasiMapel.push(mapelName);
-      var tpTextarea = document.querySelector('#kk_mapelTPList textarea[name="kk_tp_' + mapelName + '"]');
+      
+      // Ambil textarea TP berdasarkan data-safe
+      var tpTextarea = document.querySelector('#kk_mapelTPList textarea[data-safe="' + safeMapel + '"]');
       mapelTP[mapelName] = tpTextarea ? tpTextarea.value.trim() : '';
     });
 
