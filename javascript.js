@@ -6,7 +6,7 @@
     console.log("[Adapter] Mode GitHub aktif. Menyambungkan...");
     
     // ⚠️ GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT /EXEC MILIK KAMU
-    const SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPdsL55HZqlvxh9sfg22TCiXogianFDtmRU41cWIqNPmnZ2_O/exec"; 
     
     // Proxy publik AllOrigins (Gratis, tanpa API Key, mendukung POST)
     const PROXY = "https://api.allorigins.win/raw?url="; 
