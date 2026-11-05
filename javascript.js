@@ -4,6 +4,73 @@
 // Versi: v2026-09-24-final-bulk
 // ⭐ UPDATE: Approval pakai TABEL + CHECKBOX + BULK APPROVE (1 call)
 // =============================================
+// =============================================
+// ⭐ JEMBATAN ADAPTER: GITHUB PAGES -> APPS SCRIPT
+// Jangan hapus atau ubah kode ini!
+// =============================================
+(function() {
+  // Cek apakah kita sedang berjalan di GitHub Pages
+  if (window.location.hostname.includes('github.io') || window.location.hostname.includes('github.com')) {
+    console.log("[Adapter] Mode GitHub terdeteksi. Menyambungkan kabel ke Apps Script...");
+    
+    // ⚠️ GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT APPS SCRIPT KAMU
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTlvnrJfVNTVBvo-OpPd5L5HZq1Uxvh9-_vJcbWgb-9BePD_sAh5ZB7qKvqiv8c3q/exec"; 
+    
+    // Proxy untuk menembus blokir CORS Browser
+    const PROXY = "https://corsproxy.io/?"; 
+
+    let successHandler = null;
+    let failureHandler = null;
+
+    function runApi(funcName, args) {
+      const payload = { functionName: funcName, args: args };
+      
+      fetch(PROXY + encodeURIComponent(SCRIPT_URL), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' }, // Pakai text/plain agar tidak diblokir browser
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          if (successHandler) successHandler(res.data);
+        } else {
+          if (failureHandler) failureHandler(new Error(res.error || 'Terjadi kesalahan di server'));
+        }
+        successHandler = null; failureHandler = null;
+      })
+      .catch(err => {
+        console.error("[Adapter] Gagal koneksi ke Apps Script:", err);
+        if (failureHandler) failureHandler(err);
+        successHandler = null; failureHandler = null;
+      });
+    }
+
+    // Membajak google.script.run agar otomatis pakai fetch (Anti CORS)
+    const apiProxy = new Proxy({}, {
+      get: function(target, prop) {
+        if (prop === 'withSuccessHandler') { return function(cb) { successHandler = cb; return apiProxy; }; }
+        if (prop === 'withFailureHandler') { return function(cb) { failureHandler = cb; return apiProxy; }; }
+        if (prop === 'run') return apiProxy;
+        if (prop === 'script') return apiProxy;
+        if (prop === 'google') return apiProxy;
+        
+        return function(...args) {
+          runApi(prop, args);
+        };
+      }
+    });
+
+    window.google = apiProxy;
+  }
+})();
+// =============================================
+// ⭐ BATAS AKHIR ADAPTER
+// =============================================
+
+// ===== GLOBAL STATE =====
+var currentUser = null;
+// ... (LANJUTKAN KODE ASLI KAMU KE BAWAH SEPERTI BIASA) ...
 
 // ===== GLOBAL STATE =====
 var currentUser = null;
