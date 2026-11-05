@@ -1,15 +1,15 @@
 // =============================================
-// ⭐ JEMBATAN ADAPTER (ALL ORIGINS - ANTI 401)
+// ⭐ JEMBATAN ADAPTER (CODETABS - ANTI 401/522)
 // =============================================
 (function() {
   if (window.location.hostname.includes('github.io')) {
     console.log("[Adapter] Mode GitHub aktif. Menyambungkan...");
     
-    // ⚠️ GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT /EXEC MILIK KAMU
+    // ⚠️ URL DEPLOYMENT APPS SCRIPT KAMU (Jangan diubah)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPdsL55HZqlvxh9sfg22TCiXogianFDtmRU41cWIqNPmnZ2_O/exec"; 
     
-    // Proxy publik AllOrigins (Gratis, tanpa API Key, mendukung POST)
-    const PROXY = "https://api.allorigins.win/raw?url="; 
+    // Proxy publik Codetabs (Gratis, tanpa API Key, mendukung POST)
+    const PROXY = "https://api.codetabs.com/v1/proxy?quest="; 
 
     let successHandler = null;
     let failureHandler = null;
