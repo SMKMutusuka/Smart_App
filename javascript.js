@@ -1,64 +1,82 @@
 // =============================================
-// ⭐ JEMBATAN ADAPTER (CODETABS - ANTI 401/522)
+// ⭐ JEMBATAN ADAPTER (ANTI RACE-CONDITION)
 // =============================================
 (function() {
   if (window.location.hostname.includes('github.io')) {
     console.log("[Adapter] Mode GitHub aktif. Menyambungkan...");
     
-    // ⚠️ URL DEPLOYMENT APPS SCRIPT KAMU (Jangan diubah)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPdsL55HZqlvxh9sfg22TCiXogianFDtmRU41cWIqNPmnZ2_O/exec"; 
-    
-    // Proxy publik Codetabs (Gratis, tanpa API Key, mendukung POST)
     const PROXY = "https://round-shape-f330.hrint79.workers.dev/?url="; 
+    const FETCH_TIMEOUT_MS = 25000;
 
-    let successHandler = null;
-    let failureHandler = null;
-
-        function runApi(funcName, args) {
-      // ⭐ PENTING: Pakai 'fn' agar cocok dengan Code.gs
-      const payload = { fn: funcName, args: args };
-      
-      // Tambahkan batas waktu 20 detik
+    function callBackend(fnName, args, onSuccess, onFailure) {
+      console.log('[API Call]', fnName);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); 
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
       
       fetch(PROXY + encodeURIComponent(SCRIPT_URL), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ fn: fnName, args: args }),
         signal: controller.signal
       })
-      .then(res => res.json())
-      .then(res => {
+      .then(res => res.text()) // Pakai text dulu biar kalau error HTML bisa kelihatan
+      .then(text => {
         clearTimeout(timeoutId);
-        if (res.success) {
-          if (successHandler) successHandler(res.data);
-        } else {
-          if (failureHandler) failureHandler(new Error(res.error || 'Error server'));
+        if (text.trim().charAt(0) === '<') {
+          throw new Error('Backend balikin HTML (Error Google). Cek deployment Apps Script.');
         }
-        successHandler = null; failureHandler = null;
+        var res;
+        try { res = JSON.parse(text); } catch(e) { throw new Error('Response bukan JSON valid.'); }
+        
+        // Jalankan callback di setTimeout biar tidak bikin freeze UI
+        setTimeout(() => {
+          if (res.success) {
+            if (onSuccess) onSuccess(res.data);
+          } else {
+            if (onFailure) onFailure(new Error(res.error || 'Error server'));
+          }
+        }, 0);
       })
       .catch(err => {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-            err = new Error('Koneksi Timeout. Cloudflare/Google tidak merespons dalam 20 detik.');
+            err = new Error('Koneksi Timeout. Cloudflare/Google tidak merespons.');
         }
-        if (failureHandler) failureHandler(err);
-        successHandler = null; failureHandler = null;
+        console.error('[API Error]', err);
+        if (onFailure) onFailure(err);
       });
     }
 
-    window.google = new Proxy({}, {
-      get: function(target, prop) {
-        if (prop === 'withSuccessHandler') return function(cb) { successHandler = cb; return window.google; };
-        if (prop === 'withFailureHandler') return function(cb) { failureHandler = cb; return window.google; };
-        if (prop === 'run') return window.google;
-        if (prop === 'script') return window.google;
-        if (prop === 'google') return window.google;
-        
-        return function(...args) { runApi(prop, args); };
-      }
-    });
+    // ⭐ FUNGSI PEMBUAT RANTAI (Setiap request punya memori sendiri)
+    function createChain() {
+      var state = { onSuccess: null, onFailure: null };
+      var chain = {};
+
+      chain.withSuccessHandler = function(cb) { state.onSuccess = cb; return chain; };
+      chain.withFailureHandler = function(cb) { state.onFailure = cb; return chain; };
+
+      // Daftar fungsi backend yang dipanggil
+      var funcs = ['doLogin','doGtkLogin','doStudentLogin','getDashboardAdmin','getDashboardGTK','getKelas','getSiswa','saveKelas','saveSiswa','deleteKelas','deleteSiswa','getSiswaByKelas','cekAbsensi','submitAbsensi','submitAbsenWithGPS','getLaporanRekap','getStudentData','getWhatsappSiswa','updateWhatsappSiswa','getAllWhatsappSiswa','getWhatsappGTK','updateWhatsappGTK','gantiPasswordSiswa','gantiPasswordAdmin','gantiUsernameAdmin','gantiPasswordGTK','getLokasiSekolah','saveLokasiSekolah','geocodeAddress','reverseGeocode','getPendingApprovals','getApprovalStats','approveAbsensi','rejectAbsensi','submitAbsensiGTK','getDirectTugasSiswa','submitDirectTugasSiswa','getSemuaTugasAdmin','simpanNilaiDirectTugas','hapusDirectTugas','getKelasForFilter','getSiswaTidakHadir','aiGuruGenerate','generateLaporanGTKPDF','getAllDUDI','saveDUDI','deleteDUDI','generateKodeAksesDUDI','getSiswaXII','getAllPKL','savePKL','deletePKL','getPKLByNIS','getPKLByDUDI','cekAbsenPKLHariIni','submitAbsenPKL','getRiwayatAbsenPKL','cekJurnalPKLHariIni','submitJurnalPKL','getRiwayatJurnalPKL','loginPembimbing','getDashboardPembimbingSecure','approveAbsenPembimbingSecure','bulkApproveAbsenPembimbingSecure','rejectAbsenPembimbingSecure','approveJurnalDUDISecure','rejectJurnalDUDISecure','resetPinPembimbing','getJurnalPendingGuru','getRiwayatJurnalGuru','approveJurnalSekolah','rejectJurnalSekolah','getStatsJurnalGuru','getSiswaBinaanGuru','getGTKList','getMonitoringBinaanGuru','submitMonitoringPKL','getRiwayatMonitoringGuru','cekMonitoringHariIni','getSiswaBelumAbsen','getSiswaTidakHadirLengkap','autoMarkAlpaHariIni','submitAbsenPulangSiswa','getApprovalDashboardData','approveAbsensiBatch','ubahKeHadirBatch','rejectAbsensiBatch','getLaporanPKLSiswaBulanan','getDUDIByNIS','simpanFotoBengkelSiswa'];
+
+      funcs.forEach(function(fnName) {
+        chain[fnName] = function() {
+          var args = Array.prototype.slice.call(arguments);
+          callBackend(fnName, args, state.onSuccess, state.onFailure);
+          return chain;
+        };
+      });
+      return chain;
+    }
+
+    window.google = window.google || {};
+    window.google.script = window.google.script || {};
+    window.google.script.run = {
+      withSuccessHandler: function(cb) { return createChain().withSuccessHandler(cb); },
+      withFailureHandler: function(cb) { return createChain().withFailureHandler(cb); }
+    };
+    
+    console.log("[Adapter] ✅ Siap (Anti Race-Condition)");
   }
 })();
 // =============================================
