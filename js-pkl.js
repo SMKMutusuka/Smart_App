@@ -685,15 +685,31 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
       '</div>' +
     '</div>';
 
-  var formCard = '<div class="card">';
+    var formCard = '<div class="card">';
   if (!sudahMasuk) {
     formCard +=
-      '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-sign-in-alt" style="color:var(--primary);"></i> Absen Masuk</div>' +
-      buildPKLAbsenForm('masuk');
+      '<div class="form-group" style="margin-bottom:14px;">' +
+        '<label style="font-weight:700;"><i class="fas fa-check-square"></i> Status Kehadiran</label>' +
+        '<div class="absen-options-personal" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Hadir" checked onchange="gantiStatusPKL()"> <i class="fas fa-check-circle"></i> Hadir</label>' +
+          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Sakit" onchange="gantiStatusPKL()"> <i class="fas fa-thermometer-half"></i> Sakit</label>' +
+          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Izin" onchange="gantiStatusPKL()"> <i class="fas fa-envelope"></i> Izin</label>' +
+        '</div>' +
+      '</div>' +
+      '<div id="pkl-dynamic-form">' + buildPKLAbsenForm('masuk', 'Hadir') + '</div>';
   } else if (!sudahPulang) {
-    formCard +=
-      '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-sign-out-alt" style="color:#ef4444;"></i> Absen Pulang</div>' +
-      buildPKLAbsenForm('pulang');
+    // Jika absen Sakit/Izin, tidak perlu absen pulang
+    if (absen.Status === 'Sakit' || absen.Status === 'Izin') {
+      formCard += '<div style="text-align:center;padding:24px;">' +
+        '<i class="fas fa-check-circle" style="font-size:3em;color:var(--primary);"></i>' +
+        '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Absen ' + absen.Status + ' Terkirim</h3>' +
+        '<p style="font-size:12.5px;color:var(--text-muted);">Anda tercatat ' + absen.Status + ' hari ini.</p>' +
+      '</div>';
+    } else {
+      formCard +=
+        '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-sign-out-alt" style="color:#ef4444;"></i> Absen Pulang</div>' +
+        buildPKLAbsenForm('pulang', 'Hadir');
+    }
   } else {
     formCard +=
       '<div style="text-align:center;padding:24px;">' +
