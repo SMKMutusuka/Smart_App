@@ -86,7 +86,7 @@ var KONDISI_LINGKUNGAN = [
 
 // ⭐ MAPEL UNTUK INTEGRASI (13 pilihan)
 var MAPEL_INTEGRASI = [
-  "PAI & Budi Pekerti",
+  "PAI _ Budi Pekerti", // ubah &
   "Pendidikan Pancasila",
   "Bahasa Indonesia",
   "Matematika",
@@ -94,7 +94,7 @@ var MAPEL_INTEGRASI = [
   "IPA",
   "IPS",
   "Informatika",
-  "Seni & Budaya",
+  "Seni _ Budaya", // ubah &
   "PJOK",
   "Bahasa Inggris",
   "KIK",
@@ -765,31 +765,37 @@ function handleDimensiChange(checkbox) {
 // =============================================
 function handleMapelChange(checkbox) {
   var mapel = checkbox.value;
+  var safeMapel = mapel.replace(/[^a-zA-Z0-9]/g, '_'); // Bikin nama aman
   var list = document.getElementById('kk_mapelTPList');
-  var emptyEl = document.getElementById('kk_mapelEmpty');
   if (!list) return;
 
   if (checkbox.checked) {
-    // Tambahkan TP card
     var card = document.createElement('div');
     card.className = 'mapel-tp-card';
     card.setAttribute('data-mapel', mapel);
+    card.setAttribute('data-safe', safeMapel);
     card.innerHTML =
       '<div class="mapel-tp-header">' +
         '<span class="mapel-tp-name"><i class="fas fa-book"></i> ' + escapeHtml(mapel) + '</span>' +
-        '<button type="button" class="mapel-tp-remove" onclick="hapusMapel(\'' + escapeAttr(mapel) + '\')" title="Hapus"><i class="fas fa-times"></i></button>' +
+        '<button type="button" class="mapel-tp-remove" data-safe="' + safeMapel + '" title="Hapus"><i class="fas fa-times"></i></button>' +
       '</div>' +
       '<div>' +
         '<label>Tujuan Pembelajaran</label>' +
-        '<textarea name="kk_tp_' + escapeAttr(mapel) + '" placeholder="Tulis tujuan pembelajaran untuk mapel ' + escapeHtml(mapel) + '..."></textarea>' +
+        '<textarea name="kk_tp_' + safeMapel + '" data-mapel-original="' + mapel + '" data-safe="' + safeMapel + '" placeholder="Tulis tujuan pembelajaran untuk mapel ' + escapeHtml(mapel) + '..."></textarea>' +
       '</div>';
     list.appendChild(card);
-  } else {
-    // Hapus TP card
-    var existing = list.querySelector('[data-mapel="' + mapel + '"]');
-    if (existing) existing.remove();
-  }
 
+    // Tombol Hapus
+    card.querySelector('.mapel-tp-remove').addEventListener('click', function(e) {
+      e.preventDefault();
+      checkbox.checked = false;
+      card.remove();
+      updateMapelEmptyState();
+    });
+  } else {
+    var existingCard = list.querySelector('[data-mapel="' + mapel + '"]');
+    if (existingCard) existingCard.remove();
+  }
   updateMapelEmptyState();
 }
 
