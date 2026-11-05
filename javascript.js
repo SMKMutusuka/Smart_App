@@ -9,7 +9,7 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTivnrJfVNTyBVo_0oPdsL55HZqlvxh9sfg22TCiXogianFDtmRU41cWIqNPmnZ2_O/exec"; 
     
     // Proxy publik Codetabs (Gratis, tanpa API Key, mendukung POST)
-    const PROXY = "https://presensi.budi.workers.dev/?url="; 
+    const PROXY = "https://round-shape-f330.hrint79.workers.dev/?url="; 
 
     let successHandler = null;
     let failureHandler = null;
