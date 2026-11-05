@@ -1,5 +1,5 @@
 // =============================================
-// ⭐ JEMBATAN ADAPTER (VERSI FIX - PASTI JALAN)
+// ⭐ JEMBATAN ADAPTER (ALL ORIGINS - ANTI 401)
 // =============================================
 (function() {
   if (window.location.hostname.includes('github.io')) {
@@ -8,14 +8,15 @@
     // ⚠️ GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT /EXEC MILIK KAMU
     const SCRIPT_URL = "https://script.google.com/macros/s/XXXXX/exec"; 
     
-    // Proxy publik paling stabil saat ini
-    const PROXY = "https://corsproxy.io/?url="; 
+    // Proxy publik AllOrigins (Gratis, tanpa API Key, mendukung POST)
+    const PROXY = "https://api.allorigins.win/raw?url="; 
 
     let successHandler = null;
     let failureHandler = null;
 
     function runApi(funcName, args) {
-      const payload = { functionName: funcName, args: args };
+      // ⭐ PENTING: Pakai 'fn' agar cocok dengan Code.gs
+      const payload = { fn: funcName, args: args };
       
       fetch(PROXY + encodeURIComponent(SCRIPT_URL), {
         method: 'POST',
