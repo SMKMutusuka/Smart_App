@@ -736,7 +736,34 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
     .getRiwayatAbsenPKL(nis());
 }
 
-function buildPKLAbsenForm(tipe) {
+function gantiStatusPKL() {
+  var status = document.querySelector('input[name="pkl_status_kehadiran"]:checked').value;
+  var container = document.getElementById('pkl-dynamic-form');
+  if (status === 'Hadir') {
+    container.innerHTML = buildPKLAbsenForm('masuk', 'Hadir');
+  } else {
+    container.innerHTML = buildPKLAbsenForm('masuk', status);
+  }
+}
+
+function buildPKLAbsenForm(tipe, statusKehadiran) {
+  if (statusKehadiran === 'Sakit' || statusKehadiran === 'Izin') {
+    return '<div>' +
+      '<div class="form-group">' +
+        '<label><i class="fas fa-file-upload"></i> Bukti Surat / Keterangan (Wajib)</label>' +
+        '<input type="file" id="pkl_file_surat" accept="image/*,.pdf" class="form-control" required>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label><i class="fas fa-sticky-note"></i> Keterangan (Wajib)</label>' +
+        '<input type="text" id="pkl_keterangan_sakit" class="form-control" placeholder="Contoh: Demam tinggi, butuh istirahat...">' +
+      '</div>' +
+      '<button type="button" class="btn btn-primary" onclick="submitPKLAbsen(\'masuk\', \'' + statusKehadiran + '\')" style="width:100%;min-height:46px;" id="btn-submit-pkl">' +
+        '<i class="fas fa-paper-plane"></i> Kirim Absen ' + statusKehadiran +
+      '</button>' +
+    '</div>';
+  }
+
+  // FORM HADIR (LAMA)
   var radiusInfo = pklInfoSiswa ? pklInfoSiswa.Radius_Meter : 20;
   return '<div>' +
     '<div class="form-group">' +
@@ -762,7 +789,7 @@ function buildPKLAbsenForm(tipe) {
       '<label><i class="fas fa-sticky-note"></i> Keterangan (opsional)</label>' +
       '<input type="text" id="pkl_keterangan" class="form-control" placeholder="Catatan tambahan...">' +
     '</div>' +
-    '<button type="button" class="btn btn-primary" onclick="submitPKLAbsen(\'' + tipe + '\')" style="width:100%;min-height:46px;" id="btn-submit-pkl">' +
+    '<button type="button" class="btn btn-primary" onclick="submitPKLAbsen(\'' + tipe + '\', \'Hadir\')" style="width:100%;min-height:46px;" id="btn-submit-pkl">' +
       '<i class="fas fa-paper-plane"></i> Kirim Absen ' + (tipe === 'masuk' ? 'Masuk' : 'Pulang') +
     '</button>' +
   '</div>';
@@ -915,7 +942,50 @@ function handlePKLSelfieUpload(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
-function submitPKLAbsen(tipe) {
+function submitPKLAbsen(tipe, statusKehadiran) {
+  if (!statusKehadiran) statusKehadiran = 'Hadir';
+  
+  var nisClean = nis();
+  var btn = document.getElementById('btn-submit-pkl');
+  
+  // ⭐ PROSES IZIN / SAKIT
+  if (statusKehadiran === 'Sakit' || statusKehadiran === 'Izin') {
+    var fileInput = document.getElementById('pkl_file_surat');
+    var ket = document.getElementById('pkl_keterangan_sakit').value.trim();
+    
+    if (!fileInput.files || !fileInput.files[0]) {
+      Swal.fire({ icon: 'warning', title: 'Bukti Wajib', text: 'Silakan upload surat/bukti ' + statusKehadiran + '.' });
+      return;
+    }
+    if (!ket) {
+      Swal.fire({ icon: 'warning', title: 'Keterangan Wajib', text: 'Silakan isi keterangan.' });
+      return;
+    }
+    
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
+    showLoading();
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var base64 = e.target.result;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+          setTimeout(function() { loadPKLPresensiPage(); }, 1000);
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absen ' + statusKehadiran; }
+          Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
+        })
+        .submitAbsenPKL(nisClean, tipe, '', '', '', '', ket, statusKehadiran, base64);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+    return;
+  }
+  
+  // ⭐ PROSES HADIR (LAMA)
   var lat = document.getElementById('pkl_lat').value;
   var lng = document.getElementById('pkl_lng').value;
   var jarak = document.getElementById('pkl_jarak').value;
@@ -936,8 +1006,6 @@ function submitPKLAbsen(tipe) {
     return;
   }
 
-  var nisClean = nis();
-  var btn = document.getElementById('btn-submit-pkl');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
 
   showLoading();
@@ -952,7 +1020,7 @@ function submitPKLAbsen(tipe) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Absen ' + (tipe === 'masuk' ? 'Masuk' : 'Pulang'); }
       Swal.fire({ icon: 'error', title: 'Gagal', text: err.message });
     })
-    .submitAbsenPKL(nisClean, tipe, lat, lng, jarak, selfie, ket);
+    .submitAbsenPKL(nisClean, tipe, lat, lng, jarak, selfie, ket, 'Hadir', '');
 }
 
 function renderPKLRiwayat(list) {
