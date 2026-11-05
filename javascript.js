@@ -14,17 +14,23 @@
     let successHandler = null;
     let failureHandler = null;
 
-    function runApi(funcName, args) {
+        function runApi(funcName, args) {
       // ⭐ PENTING: Pakai 'fn' agar cocok dengan Code.gs
       const payload = { fn: funcName, args: args };
+      
+      // Tambahkan batas waktu 20 detik
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); 
       
       fetch(PROXY + encodeURIComponent(SCRIPT_URL), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
       .then(res => res.json())
       .then(res => {
+        clearTimeout(timeoutId);
         if (res.success) {
           if (successHandler) successHandler(res.data);
         } else {
@@ -33,6 +39,10 @@
         successHandler = null; failureHandler = null;
       })
       .catch(err => {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            err = new Error('Koneksi Timeout. Cloudflare/Google tidak merespons dalam 20 detik.');
+        }
         if (failureHandler) failureHandler(err);
         successHandler = null; failureHandler = null;
       });
