@@ -1256,7 +1256,16 @@ function renderPKLJurnalRiwayat(list) {
 
   var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
   list.forEach(function(j) {
-    // ⭐ Hanya cek approval sekolah
+    
+    // ⭐ 1. UBAH FORMAT TANGGAL MENJADI DD-MM-YYYY
+    var tglParts = String(j.Tanggal || '').split('-');
+    var tglDisplay = j.Tanggal; // Default jika format tidak sesuai
+    if (tglParts.length === 3) {
+      tglDisplay = tglParts[2] + '-' + tglParts[1] + '-' + tglParts[0]; // Hasil: 06-11-2026
+      // Jika ingin pakai titik dua (DD:MM:YYYY), ganti tanda '-' menjadi ':'
+      // tglDisplay = tglParts[2] + ':' + tglParts[1] + ':' + tglParts[0]; 
+    }
+
     var badgeSekolah = j.Approval_Sekolah === 'Approved' 
       ? '<span class="badge-approval-approved" style="font-size:10px;padding:2px 8px;">✓ Approved</span>'
       : j.Approval_Sekolah === 'Rejected' 
@@ -1275,7 +1284,8 @@ function renderPKLJurnalRiwayat(list) {
     html +=
       '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
-          '<strong style="color:#0f172a;font-size:12.5px;">' + j.Tanggal + '</strong>' +
+          // ⭐ 2. PAKAI VARIABEL tglDisplay DI SINI
+          '<strong style="color:#0f172a;font-size:12.5px;">' + tglDisplay + '</strong>' +
           finalBadge +
         '</div>' +
         '<div style="font-size:12px;color:#475569;line-height:1.5;">' + escapeHtml(j.Kegiatan).replace(/\n/g, '<br>') + '</div>' +
