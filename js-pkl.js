@@ -13,7 +13,8 @@ var dudiListCache = [];
 var pklInfoSiswa = null;
 var absenPKLHariIni = null;
 var jurnalPKLHariIni = null;
-
+var pklCurrentAbsen = null;
+var pklCurrentInfo = null;
 // =============================================
 // DUDI — CRUD
 // =============================================
@@ -653,6 +654,9 @@ function loadPKLPresensiPage() {
 }
 
 function renderPKLPresensiPage(container, pklInfo, absen) {
+  pklCurrentAbsen = absen;
+  pklCurrentInfo = pklInfo;
+  
   var today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   var infoCard =
@@ -667,57 +671,43 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
       '</div>' +
     '</div>';
 
-  var sudahMasuk = absen && absen.Jam_Masuk;
-  var sudahPulang = absen && absen.Jam_Pulang;
+  var sudahMasuk = absen && absen.Jam_Masuk && absen.Jam_Masuk !== '-' && absen.Jam_Masuk !== '00:00:00';
+  var sudahKembali = absen && absen.Jam_Kembali && absen.Jam_Kembali !== '-' && absen.Jam_Kembali !== '00:00:00';
+  var sudahPulang = absen && absen.Jam_Pulang && absen.Jam_Pulang !== '-' && absen.Jam_Pulang !== '00:00:00';
 
   var statusCard =
     '<div class="card" style="margin-bottom:16px;">' +
       '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:10px;"><i class="fas fa-info-circle" style="color:var(--primary);"></i> Status Hari Ini</div>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:120px;padding:12px;background:' + (sudahMasuk ? '#ecfdf5' : '#f1f5f9') + ';border-radius:10px;">' +
+        '<div style="flex:1;min-width:100px;padding:10px;background:' + (sudahMasuk ? '#ecfdf5' : '#f1f5f9') + ';border-radius:10px;">' +
           '<div style="font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;">Masuk</div>' +
-          '<div style="font-size:16px;font-weight:800;color:' + (sudahMasuk ? '#065f46' : '#94a3b8') + ';">' + (sudahMasuk ? absen.Jam_Masuk : 'Belum') + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:' + (sudahMasuk ? '#065f46' : '#94a3b8') + ';">' + (sudahMasuk ? absen.Jam_Masuk : 'Belum') + '</div>' +
         '</div>' +
-        '<div style="flex:1;min-width:120px;padding:12px;background:' + (sudahPulang ? '#e0e7ff' : '#f1f5f9') + ';border-radius:10px;">' +
+        '<div style="flex:1;min-width:100px;padding:10px;background:' + (sudahKembali ? '#e0f2fe' : '#f1f5f9') + ';border-radius:10px;">' +
+          '<div style="font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;">Kembali</div>' +
+          '<div style="font-size:15px;font-weight:800;color:' + (sudahKembali ? '#0369a1' : '#94a3b8') + ';">' + (sudahKembali ? absen.Jam_Kembali : 'Belum') + '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:100px;padding:10px;background:' + (sudahPulang ? '#e0e7ff' : '#f1f5f9') + ';border-radius:10px;">' +
           '<div style="font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;">Pulang</div>' +
-          '<div style="font-size:16px;font-weight:800;color:' + (sudahPulang ? '#3730a3' : '#94a3b8') + ';">' + (sudahPulang ? absen.Jam_Pulang : 'Belum') + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:' + (sudahPulang ? '#3730a3' : '#94a3b8') + ';">' + (sudahPulang ? absen.Jam_Pulang : 'Belum') + '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
 
-    var formCard = '<div class="card">';
-  if (!sudahMasuk) {
-    formCard +=
-      '<div class="form-group" style="margin-bottom:14px;">' +
-        '<label style="font-weight:700;"><i class="fas fa-check-square"></i> Status Kehadiran</label>' +
-        '<div class="absen-options-personal" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
-          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Hadir" checked onchange="gantiStatusPKL()"> <i class="fas fa-check-circle"></i> Hadir</label>' +
-          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Sakit" onchange="gantiStatusPKL()"> <i class="fas fa-thermometer-half"></i> Sakit</label>' +
-          '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Izin" onchange="gantiStatusPKL()"> <i class="fas fa-envelope"></i> Izin</label>' +
-        '</div>' +
+  var formCard = '<div class="card">';
+  
+  // ⭐ PILIHAN STATUS SELALU MUNCUL
+  formCard +=
+    '<div class="form-group" style="margin-bottom:14px;">' +
+      '<label style="font-weight:700;"><i class="fas fa-check-square"></i> Pilih Status Kehadiran</label>' +
+      '<div class="absen-options-personal" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">' +
+        '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Hadir" ' + ((!absen || absen.Status === 'Hadir') ? 'checked' : '') + ' onchange="gantiStatusPKL()"> <i class="fas fa-check-circle"></i> Hadir</label>' +
+        '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Sakit" ' + ((absen && absen.Status === 'Sakit') ? 'checked' : '') + ' onchange="gantiStatusPKL()"> <i class="fas fa-thermometer-half"></i> Sakit</label>' +
+        '<label class="radio-btn"><input type="radio" name="pkl_status_kehadiran" value="Izin" ' + ((absen && absen.Status === 'Izin') ? 'checked' : '') + ' onchange="gantiStatusPKL()"> <i class="fas fa-envelope"></i> Izin</label>' +
       '</div>' +
-      '<div id="pkl-dynamic-form">' + buildPKLAbsenForm('masuk', 'Hadir') + '</div>';
-  } else if (!sudahPulang) {
-    // Jika absen Sakit/Izin, tidak perlu absen pulang
-    if (absen.Status === 'Sakit' || absen.Status === 'Izin') {
-      formCard += '<div style="text-align:center;padding:24px;">' +
-        '<i class="fas fa-check-circle" style="font-size:3em;color:var(--primary);"></i>' +
-        '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Absen ' + absen.Status + ' Terkirim</h3>' +
-        '<p style="font-size:12.5px;color:var(--text-muted);">Anda tercatat ' + absen.Status + ' hari ini.</p>' +
-      '</div>';
-    } else {
-      formCard +=
-        '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-sign-out-alt" style="color:#ef4444;"></i> Absen Pulang</div>' +
-        buildPKLAbsenForm('pulang', 'Hadir');
-    }
-  } else {
-    formCard +=
-      '<div style="text-align:center;padding:24px;">' +
-        '<i class="fas fa-check-circle" style="font-size:3em;color:var(--primary);"></i>' +
-        '<h3 style="font-size:16px;font-weight:800;color:#0f172a;margin-top:10px;">Absen Hari Ini Lengkap</h3>' +
-        '<p style="font-size:12.5px;color:var(--text-muted);">Terima kasih sudah disiplin.</p>' +
-      '</div>';
-  }
+    '</div>' +
+    '<div id="pkl-dynamic-form"></div>';
+    
   formCard += '</div>';
 
   var riwayatCard =
@@ -727,22 +717,45 @@ function renderPKLPresensiPage(container, pklInfo, absen) {
     '</div>';
 
   container.innerHTML = infoCard + statusCard + formCard + riwayatCard;
+  
+  // Render form pertama kali
+  gantiStatusPKL();
 
   google.script.run
-    .withSuccessHandler(function(list) {
-      renderPKLRiwayat(list);
-    })
+    .withSuccessHandler(function(list) { renderPKLRiwayat(list); })
     .withFailureHandler(function(err) { console.error(err); })
     .getRiwayatAbsenPKL(nis());
 }
 
 function gantiStatusPKL() {
-  var status = document.querySelector('input[name="pkl_status_kehadiran"]:checked').value;
+  var statusRadio = document.querySelector('input[name="pkl_status_kehadiran"]:checked');
+  if (!statusRadio) return;
+  var status = statusRadio.value;
   var container = document.getElementById('pkl-dynamic-form');
+  if (!container) return;
+
+  var absen = pklCurrentAbsen;
+  var sudahMasuk = absen && absen.Jam_Masuk && absen.Jam_Masuk !== '-' && absen.Jam_Masuk !== '00:00:00';
+  var sudahKembali = absen && absen.Jam_Kembali && absen.Jam_Kembali !== '-' && absen.Jam_Kembali !== '00:00:00';
+  var sudahPulang = absen && absen.Jam_Pulang && absen.Jam_Pulang !== '-' && absen.Jam_Pulang !== '00:00:00';
+
   if (status === 'Hadir') {
-    container.innerHTML = buildPKLAbsenForm('masuk', 'Hadir');
+    if (!sudahMasuk) {
+      container.innerHTML = buildPKLAbsenForm('masuk', 'Hadir');
+    } else if (!sudahKembali) {
+      container.innerHTML = buildPKLAbsenForm('kembali', 'Hadir');
+    } else if (!sudahPulang) {
+      container.innerHTML = buildPKLAbsenForm('pulang', 'Hadir');
+    } else {
+      container.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;">Absen hari ini sudah lengkap.</div>';
+    }
   } else {
-    container.innerHTML = buildPKLAbsenForm('masuk', status);
+    // Sakit / Izin
+    if (sudahMasuk) {
+      container.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px;">Anda sudah absen masuk hari ini. Tidak dapat mengubah status ke Sakit/Izin tanpa persetujuan admin.</div>';
+    } else {
+      container.innerHTML = buildPKLAbsenForm('masuk', status);
+    }
   }
 }
 
