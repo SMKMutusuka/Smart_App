@@ -1099,9 +1099,6 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
 
   var formCard;
   if (jurnalHariIni) {
-    var badgeDUDI = jurnalHariIni.Approval_DUDI === 'Approved' ? 'badge-approval-approved'
-                   : jurnalHariIni.Approval_DUDI === 'Rejected' ? 'badge-approval-rejected'
-                   : 'badge-approval-pending';
     var badgeSekolah = jurnalHariIni.Approval_Sekolah === 'Approved' ? 'badge-approval-approved'
                       : jurnalHariIni.Approval_Sekolah === 'Rejected' ? 'badge-approval-rejected'
                       : 'badge-approval-pending';
@@ -1116,12 +1113,8 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
           (jurnalHariIni.Foto_Url ? '<br><br><a href="' + jurnalHariIni.Foto_Url + '" target="_blank" class="link-surat">📷 Lihat Foto</a>' : '') +
         '</div>' +
         '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-          '<div style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;">' +
-            '<div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Pembimbing DUDI</div>' +
-            '<div style="margin-top:6px;"><span class="' + badgeDUDI + '" style="font-size:11px;padding:3px 10px;">' + jurnalHariIni.Approval_DUDI + '</span></div>' +
-            (jurnalHariIni.Catatan_DUDI ? '<div style="font-size:11px;color:#475569;margin-top:6px;">"' + escapeHtml(jurnalHariIni.Catatan_DUDI) + '"</div>' : '') +
-          '</div>' +
-          '<div style="flex:1;min-width:180px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;">' +
+          // ⭐ HANYA TAMPILKAN PEMBIMBING SEKOLAH
+          '<div style="flex:1;min-width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;">' +
             '<div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Pembimbing Sekolah</div>' +
             '<div style="margin-top:6px;"><span class="' + badgeSekolah + '" style="font-size:11px;padding:3px 10px;">' + jurnalHariIni.Approval_Sekolah + '</span></div>' +
             (jurnalHariIni.Catatan_Sekolah ? '<div style="font-size:11px;color:#475569;margin-top:6px;">"' + escapeHtml(jurnalHariIni.Catatan_Sekolah) + '"</div>' : '') +
@@ -1134,7 +1127,7 @@ function renderPKLJurnalPage(container, jurnalHariIni) {
         '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:14px;"><i class="fas fa-pen" style="color:var(--primary);"></i> Tulis Jurnal Hari Ini</div>' +
         '<div class="form-group">' +
           '<label><i class="fas fa-tasks"></i> Kegiatan Hari Ini — Deskripsikan minimal 10 kata</label>' +
-          '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli mesin, membersihkan karburator, dan melakukan tune up ringan bersama pembimbing."></textarea>' +
+          '<textarea id="pkl_jurnal_kegiatan" class="form-control" rows="5" placeholder="Contoh: Hari ini saya mengerjakan servis motor Honda Beat, mengganti oli mesin..."></textarea>' +
           '<div id="pkl_jurnal_word_count" style="font-size:11px;color:#94a3b8;margin-top:4px;text-align:right;">0 kata — minimal 10 kata</div>' +
         '</div>' +
         '<div class="form-group">' +
@@ -1263,17 +1256,21 @@ function renderPKLJurnalRiwayat(list) {
 
   var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
   list.forEach(function(j) {
-    var badgeDUDI = j.Approval_DUDI === 'Approved' ? 'badge-approval-approved'
-                   : j.Approval_DUDI === 'Rejected' ? 'badge-approval-rejected'
-                   : 'badge-approval-pending';
-    var badgeSekolah = j.Approval_Sekolah === 'Approved' ? 'badge-approval-approved'
-                      : j.Approval_Sekolah === 'Rejected' ? 'badge-approval-rejected'
-                      : 'badge-approval-pending';
-    var finalBadge = j.Status_Final === 'Approved'
+    // ⭐ Hanya cek approval sekolah
+    var badgeSekolah = j.Approval_Sekolah === 'Approved' 
       ? '<span class="badge-approval-approved" style="font-size:10px;padding:2px 8px;">✓ Approved</span>'
-      : j.Status_Final === 'Rejected'
+      : j.Approval_Sekolah === 'Rejected' 
         ? '<span class="badge-approval-rejected" style="font-size:10px;padding:2px 8px;">✗ Rejected</span>'
-        : '<span class="badge-approval-pending" style="font-size:10px;padding:2px 8px;">⏳ ' + (j.Status_Final || 'Pending') + '</span>';
+        : '<span class="badge-approval-pending" style="font-size:10px;padding:2px 8px;">⏳ Pending</span>';
+
+    var finalBadge = '';
+    if (j.Approval_Sekolah === 'Approved') {
+      finalBadge = '<span class="badge-approval-approved" style="font-size:10px;padding:2px 8px;">✓ Selesai</span>';
+    } else if (j.Approval_Sekolah === 'Rejected') {
+      finalBadge = '<span class="badge-approval-rejected" style="font-size:10px;padding:2px 8px;">✗ Ditolak</span>';
+    } else {
+      finalBadge = '<span class="badge-approval-pending" style="font-size:10px;padding:2px 8px;">⏳ Menunggu</span>';
+    }
 
     html +=
       '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">' +
@@ -1283,11 +1280,9 @@ function renderPKLJurnalRiwayat(list) {
         '</div>' +
         '<div style="font-size:12px;color:#475569;line-height:1.5;">' + escapeHtml(j.Kegiatan).replace(/\n/g, '<br>') + '</div>' +
         (j.Foto_Url ? '<div style="margin-top:6px;"><a href="' + j.Foto_Url + '" target="_blank" class="link-surat" style="font-size:10px;">Lihat Foto</a></div>' : '') +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
-          '<span style="font-size:10px;color:#64748b;font-weight:700;">DUDI:</span>' + badgeDUDI +
-          '<span style="font-size:10px;color:#64748b;font-weight:700;margin-left:6px;">Sekolah:</span>' + badgeSekolah +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">' +
+          '<span style="font-size:10px;color:#64748b;font-weight:700;">Status Sekolah:</span>' + badgeSekolah +
         '</div>' +
-        (j.Catatan_DUDI ? '<div style="margin-top:6px;font-size:11px;color:#0369a1;background:#e0f2fe;padding:6px 10px;border-radius:6px;"><strong>DUDI:</strong> ' + escapeHtml(j.Catatan_DUDI) + '</div>' : '') +
         (j.Catatan_Sekolah ? '<div style="margin-top:6px;font-size:11px;color:#065f46;background:#d1fae5;padding:6px 10px;border-radius:6px;"><strong>Sekolah:</strong> ' + escapeHtml(j.Catatan_Sekolah) + '</div>' : '') +
       '</div>';
   });
